@@ -37,31 +37,26 @@ RUN docker-php-ext-enable intl zip
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
 
-# Verify extensions are installed
-RUN php -m | grep -E "(intl|zip|pdo_pgsql|pdo_mysql|redis)" && echo "All required extensions installed"
-
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /var/www
 
-# Copy composer files first for better caching
-COPY composer.json composer.lock ./
-
-# Install dependencies without scripts (artisan is not yet available)
-RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --prefer-dist
-
 # Copy application files
 COPY . /var/www
 
-# Now run composer install again to trigger scripts and generate autoloader
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install dependencies
+# We use --no-scripts to prevent Laravel from trying to boot the app during build
+# (which fails if DB/Env vars are missing)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage
+    && chmod -R 755 /var/www/storage \
+    && chmod -R 755 /var/www/bootstrap/cache
 
 EXPOSE 8000
 
-CMD php artisan serve --host=0.0.0.0 --port=$PORT
+# The start command will handle the final steps like discovery
+CMD php artisan package:discover --ansi && php artisan serve --host=0.0.0.0 --port=$PORT
