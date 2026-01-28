@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Http;
 
@@ -19,10 +20,10 @@ class AutomationResource extends Resource
     // Final fix for navigation icon type hints
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cpu-chip';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form
-            ->schema([
+            ->components([
                 Forms\Components\Select::make('shop_id')
                     ->relationship('shop', 'name')
                     ->required(),
@@ -71,7 +72,7 @@ class AutomationResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function table(Schema $table): Schema
     {
         return $table
             ->columns([
