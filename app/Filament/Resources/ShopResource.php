@@ -35,7 +35,7 @@ class ShopResource extends Resource
             ]);
     }
 
-    public static function table(Schema $table): Schema
+    public static function table(Table $table): Table
     {
         return $table
             ->columns([
