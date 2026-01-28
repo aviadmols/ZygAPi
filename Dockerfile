@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     libicu-dev \
     zlib1g-dev \
+    libzip-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions
