@@ -16,6 +16,7 @@ class AutomationResource extends Resource
 {
     protected static ?string $model = Automation::class;
 
+    // Final fix for navigation icon type hints
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-cpu-chip';
 
     public static function form(Form $form): Form
