@@ -49,11 +49,14 @@ WORKDIR /var/www
 # Copy composer files first for better caching
 COPY composer.json composer.lock ./
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+# Install dependencies without scripts (artisan is not yet available)
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --prefer-dist
 
 # Copy application files
 COPY . /var/www
+
+# Now run composer install again to trigger scripts and generate autoloader
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www \
