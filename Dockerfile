@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libicu-dev \
     zlib1g-dev \
     libzip-dev \
-    libzip4 \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
