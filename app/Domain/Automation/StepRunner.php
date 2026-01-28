@@ -7,6 +7,7 @@ use App\Integrations\Recharge\Actions\SubscriptionGetAction;
 use App\Integrations\Recharge\RechargeClient;
 use App\Integrations\Shopify\Actions\OrderAddTagsAction;
 use App\Integrations\Shopify\Actions\OrderGetAction;
+use App\Integrations\Shopify\Actions\InventoryGetAction;
 use App\Integrations\Shopify\ShopifyClient;
 use App\Models\IntegrationRecharge;
 use App\Models\IntegrationShopify;
@@ -81,6 +82,12 @@ class StepRunner
                 )
             ),
             'shopify.order.add_tags' => new OrderAddTagsAction(
+                new ShopifyClient(
+                    $this->getShopifyIntegration($context['shop_id']),
+                    $redactionService
+                )
+            ),
+            'shopify.inventory.get' => new InventoryGetAction(
                 new ShopifyClient(
                     $this->getShopifyIntegration($context['shop_id']),
                     $redactionService
