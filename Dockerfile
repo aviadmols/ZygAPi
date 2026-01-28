@@ -14,11 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libicu-dev \
     zlib1g-dev \
     libzip-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure intl --with-icu-dir=/usr \
-    && docker-php-ext-configure zip \
+    && docker-php-ext-configure zip --with-libzip \
     && docker-php-ext-install -j$(nproc) \
         pdo_mysql \
         pdo_pgsql \
