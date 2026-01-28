@@ -17,9 +17,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
+# Verify libzip is available
+RUN pkg-config --exists libzip && echo "libzip found" || echo "libzip not found"
+
 # Configure and install PHP extensions
 RUN docker-php-ext-configure intl --with-icu-dir=/usr \
-    && docker-php-ext-configure zip --with-libzip \
+    && docker-php-ext-configure zip --with-libzip=/usr \
     && docker-php-ext-install -j$(nproc) \
         pdo_mysql \
         pdo_pgsql \
