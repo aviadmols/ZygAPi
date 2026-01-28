@@ -16,7 +16,7 @@ class AutomationResource extends Resource
 {
     protected static ?string $model = Automation::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cpu-chip';
+    protected static string $navigationIcon = 'heroicon-o-cpu-chip';
 
     public static function form(Form $form): Form
     {
