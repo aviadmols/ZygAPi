@@ -1,7 +1,7 @@
 FROM php:8.4-fpm
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     libpng-dev \
@@ -13,9 +13,24 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libicu-dev \
     zlib1g-dev \
-    && docker-php-ext-configure intl \
-    && docker-php-ext-install -j$(nproc) pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd intl zip \
-    && docker-php-ext-enable intl zip
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure and install PHP extensions
+RUN docker-php-ext-configure intl --with-icu-dir=/usr \
+    && docker-php-ext-configure zip \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        pdo_pgsql \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        intl \
+        zip
+
+# Enable extensions
+RUN docker-php-ext-enable intl zip
 
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
