@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions
-RUN docker-php-ext-configure intl --with-icu-dir=/usr \
+RUN docker-php-ext-configure intl \
     && docker-php-ext-configure zip \
     && docker-php-ext-install -j$(nproc) \
         pdo_mysql \
