@@ -47,8 +47,6 @@ WORKDIR /var/www
 COPY . /var/www
 
 # Install dependencies
-# We use --no-scripts to prevent Laravel from trying to boot the app during build
-# (which fails if DB/Env vars are missing)
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist
 
 # Set permissions
@@ -58,5 +56,10 @@ RUN chown -R www-data:www-data /var/www \
 
 EXPOSE 8000
 
-# The start command will handle the final steps like discovery
-CMD php artisan package:discover --ansi && php artisan serve --host=0.0.0.0 --port=$PORT
+# Start command: 
+# 1. Discover packages
+# 2. Run migrations (important for first deploy)
+# 3. Start PHP server directly to avoid 'artisan serve' bug in PHP 8.4
+CMD php artisan package:discover --ansi && \
+    php artisan migrate --force && \
+    php -S 0.0.0.0:$PORT -t public
