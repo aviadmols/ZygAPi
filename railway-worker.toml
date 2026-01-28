@@ -1,0 +1,7 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "php artisan queue:work redis --tries=3 --timeout=300"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
