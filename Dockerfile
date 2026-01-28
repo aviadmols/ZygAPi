@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.4-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install -y \
     unzip \
     postgresql-client \
     libpq-dev \
-    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd
+    libicu-dev \
+    zlib1g-dev \
+    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd intl zip
 
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
