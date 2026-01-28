@@ -58,8 +58,9 @@ EXPOSE 8000
 
 # Start command: 
 # 1. Discover packages
-# 2. Run migrations (important for first deploy)
-# 3. Start PHP server directly to avoid 'artisan serve' bug in PHP 8.4
+# 2. Run migrations and seed (important for first deploy)
+# 3. Start PHP server directly
 CMD php artisan package:discover --ansi && \
     php artisan migrate --force && \
+    php artisan db:seed --class=DemoSeeder --force && \
     php -S 0.0.0.0:$PORT -t public
