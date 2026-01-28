@@ -185,7 +185,7 @@ Access your app and check:
 
 - Check build logs for composer errors
 - Ensure `composer.json` is correct
-- Verify PHP version compatibility (8.2+)
+- Verify PHP version compatibility (8.4+)
 
 ### Memory Issues
 

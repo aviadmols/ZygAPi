@@ -13,10 +13,15 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libicu-dev \
     zlib1g-dev \
-    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd intl zip
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install -j$(nproc) pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd intl zip \
+    && docker-php-ext-enable intl zip
 
 # Install Redis extension
 RUN pecl install redis && docker-php-ext-enable redis
+
+# Verify extensions are installed
+RUN php -m | grep -E "(intl|zip|pdo_pgsql|pdo_mysql|redis)" && echo "All required extensions installed"
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -24,20 +29,18 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www
 
+# Copy composer files first for better caching
+COPY composer.json composer.lock ./
+
+# Install dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
 # Copy application files
 COPY . /var/www
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Cache configuration
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
 
 EXPOSE 8000
 

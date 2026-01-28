@@ -17,7 +17,7 @@ A production-ready Laravel 11 multi-tenant automation platform for e-commerce st
 
 ### Requirements
 
-- PHP 8.2+
+- PHP 8.4+
 - PostgreSQL
 - Redis
 - Composer
