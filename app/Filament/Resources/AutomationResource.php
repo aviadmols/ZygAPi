@@ -58,7 +58,6 @@ class AutomationResource extends Resource
                                 'shopify.order.get' => 'Shopify: Get Order',
                                 'shopify.order.add_tags' => 'Shopify: Add Tags',
                                 'shopify.order.remove_tags' => 'Shopify: Remove Tags',
-                                'shopify.inventory.get' => 'Shopify: Get Inventory',
                                 'recharge.subscription.get' => 'Recharge: Get Subscription',
                                 'recharge.subscription.update' => 'Recharge: Update Subscription',
                             ])

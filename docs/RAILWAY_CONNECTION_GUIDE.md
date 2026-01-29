@@ -19,19 +19,23 @@ Based on your Railway dashboard, you have:
 
 ### Step 2: Link PostgreSQL Variables to ZygAPi
 
-**Option A: Reference Variables (Recommended)**
+**Option A: Use DATABASE_URL (Easiest - Recommended)**
 
-Railway can automatically share variables between services:
+Railway automatically provides `DATABASE_URL` in your Postgres service. The easiest way is to reference it:
 
 1. Click on your **ZygAPi** service
 2. Go to **"Variables"** tab
-3. Click **"New Variable"** or look for **"Reference Variable"** / **"Add from Service"**
-4. Select **Postgres** service
-5. Railway will automatically add the PostgreSQL connection variables
+3. Click **"New Variable"**
+4. Add:
+   - **Name:** `DATABASE_URL`
+   - **Value:** Click on **"Reference Variable"** or **"Add from Service"** → Select **Postgres** service → Select `DATABASE_URL`
+   - OR manually copy the `DATABASE_URL` value from Postgres service Variables tab
 
-**Option B: Manual Setup**
+The application will automatically use `DATABASE_URL` for connection.
 
-If automatic linking doesn't work, manually add these variables to **ZygAPi** service:
+**Option B: Use Individual DB Variables**
+
+If you prefer individual variables, add these to **ZygAPi** service:
 
 1. Click on **ZygAPi** service → **"Variables"** tab
 2. Click **"New Variable"** and add each:
@@ -44,6 +48,15 @@ DB_DATABASE=<copy PGDATABASE value from Postgres service>
 DB_USERNAME=<copy PGUSER value from Postgres service>
 DB_PASSWORD=<copy PGPASSWORD value from Postgres service>
 ```
+
+**Option C: Reference PG* Variables (Also Works)**
+
+The application also supports Railway's `PG*` variables directly:
+
+1. Click on **ZygAPi** service → **"Variables"** tab
+2. Click **"New Variable"** → **"Reference Variable"** → Select **Postgres** service
+3. Reference these variables: `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
+4. Add: `DB_CONNECTION=pgsql`
 
 ### Step 3: Add Other Required Variables
 
@@ -141,18 +154,15 @@ Test the database connection:
 ### Quick Checklist
 
 - [ ] PostgreSQL service is Online (green)
-- [ ] ZygAPi service variables include:
-  - [ ] `DB_CONNECTION=pgsql`
-  - [ ] `DB_HOST` (from Postgres PGHOST)
-  - [ ] `DB_PORT` (from Postgres PGPORT)
-  - [ ] `DB_DATABASE` (from Postgres PGDATABASE)
-  - [ ] `DB_USERNAME` (from Postgres PGUSER)
-  - [ ] `DB_PASSWORD` (from Postgres PGPASSWORD)
-  - [ ] `APP_KEY` (generated)
-  - [ ] `APP_URL` (your Railway domain)
+- [ ] ZygAPi service variables include (choose one option):
+  - **Option A:** `DATABASE_URL` (referenced from Postgres service)
+  - **Option B:** `DB_CONNECTION=pgsql` + `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+  - **Option C:** `DB_CONNECTION=pgsql` + `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` (referenced from Postgres)
+- [ ] `APP_KEY` (generated - see Step 4)
+- [ ] `APP_URL` (your Railway domain)
 - [ ] ZygAPi build completed successfully
-- [ ] Migrations run successfully
-- [ ] Admin user created
+- [ ] Migrations run successfully (auto-runs on deploy via Dockerfile CMD)
+- [ ] Admin user created (via DemoSeeder or manually)
 
 ### Visual Guide
 

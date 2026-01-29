@@ -56,5 +56,5 @@ RUN chown -R www-data:www-data /var/www \
 
 EXPOSE 8000
 
-# Single line CMD to avoid any execution issues
-CMD sh -c "php artisan package:discover --ansi && php artisan migrate --force && php artisan db:seed --class=DemoSeeder --force && php -S 0.0.0.0:$PORT -t public"
+# Startup script with error handling
+CMD sh -c "set -e && echo '🚀 Starting Zyg application...' && php artisan package:discover --ansi && echo '📦 Running migrations...' && php artisan migrate --force || (echo '❌ Migration failed! Check database connection.' && exit 1) && echo '🌱 Seeding database...' && php artisan db:seed --class=DemoSeeder --force || echo '⚠️  Seeding failed or skipped' && echo '✅ Starting web server...' && php -S 0.0.0.0:\$PORT -t public"
