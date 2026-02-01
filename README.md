@@ -1,50 +1,50 @@
 # Shopify Tags Management System
 
-מערכת ניהול תגיות להזמנות Shopify עם תמיכה ב-AI, multi-store, webhooks, ועיבוד בתור.
+A comprehensive Shopify order tagging management system with AI support, multi-store capabilities, webhooks, and queue processing.
 
-## תכונות
+## Features
 
-- ✅ ניהול מספר חנויות Shopify
-- ✅ הגדרת טוקנים לכל חנות (Shopify + Recharge)
-- ✅ יצירת חוקיות תגיות דינמיות עם AI (OpenRouter)
-- ✅ תמיכה בתגיות מורכבות עם פונקציות (get, split, switch)
-- ✅ עיבוד בתור (queue) לאלפי הזמנות
-- ✅ ממשק ניהול מלא בעברית
-- ✅ Webhook handler עם HMAC verification
-- ✅ סרגל התקדמות בזמן אמת
+- ✅ Multi-store Shopify management
+- ✅ Token configuration for each store (Shopify + Recharge)
+- ✅ Dynamic tagging rules creation with AI (OpenRouter)
+- ✅ Support for complex tags with functions (get, split, switch)
+- ✅ Queue processing for thousands of orders
+- ✅ Full management interface
+- ✅ Webhook handler with HMAC verification
+- ✅ Real-time progress bar
 
-## דרישות
+## Requirements
 
 - PHP 8.2+
-- MySQL 5.7+ או MariaDB 10.3+
+- MySQL 5.7+ or MariaDB 10.3+
 - Composer
-- Node.js & NPM (ל-Breeze)
-- Redis (מומלץ ל-queue) או Database queue
+- Node.js & NPM (for Breeze)
+- Redis (recommended for queue) or Database queue
 
-## התקנה
+## Installation
 
-1. העתק את הפרויקט:
+1. Navigate to the project:
 ```bash
 cd shopify-tags-system
 ```
 
-2. התקן תלויות:
+2. Install dependencies:
 ```bash
 composer install
 npm install
 ```
 
-3. העתק קובץ סביבה:
+3. Copy environment file:
 ```bash
 cp .env.example .env
 ```
 
-4. צור מפתח אפליקציה:
+4. Generate application key:
 ```bash
 php artisan key:generate
 ```
 
-5. הגדר את `.env`:
+5. Configure `.env`:
 ```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -53,107 +53,107 @@ DB_DATABASE=shopify_tags
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
 
-QUEUE_CONNECTION=database  # או redis
+QUEUE_CONNECTION=database  # or redis
 
 OPENROUTER_API_KEY=your_openrouter_api_key
 SHOPIFY_WEBHOOK_SECRET=your_webhook_secret
 ```
 
-6. הרץ migrations:
+6. Run migrations:
 ```bash
 php artisan migrate
 ```
 
-7. צור משתמש ראשון:
+7. Create first user:
 ```bash
 php artisan migrate
-# או דרך הממשק: /register
+# or via interface: /register
 ```
 
-8. בנה assets:
+8. Build assets:
 ```bash
 npm run build
 ```
 
-9. הפעל queue worker (בטרמינל נפרד):
+9. Start queue worker (in separate terminal):
 ```bash
 php artisan queue:work --queue=order-processing
 ```
 
-## שימוש
+## Usage
 
-### 1. הוספת חנות
+### 1. Adding a Store
 
-1. היכנס ל-"חנויות" בתפריט
-2. לחץ על "חנות חדשה"
-3. מלא את הפרטים:
-   - שם החנות
-   - Shopify Store URL (לדוגמה: your-store.myshopify.com)
+1. Go to "Stores" in the menu
+2. Click "New Store"
+3. Fill in the details:
+   - Store Name
+   - Shopify Store URL (e.g., your-store.myshopify.com)
    - Shopify Access Token
-   - Recharge Access Token (אופציונלי)
+   - Recharge Access Token (Optional)
 
-### 2. יצירת חוקיות תגיות
+### 2. Creating Tagging Rules
 
-#### דרך AI (מומלץ):
+#### Via AI (Recommended):
 
-1. היכנס ל-"שיחות AI"
-2. לחץ על "שיחה חדשה"
-3. בחר חנות
-4. הגדר את החוקיות בטקסט (לדוגמה: "אם יש פרופטי X אז תגית Y")
-5. הכנס דוגמת הזמנה (JSON)
-6. לחץ על "צור חוקיות מהשיחה"
+1. Go to "AI Conversations"
+2. Click "New Conversation"
+3. Select a store
+4. Define rules in text (e.g., "If property X exists then tag Y")
+5. Enter sample order (JSON)
+6. Click "Generate Rule from Conversation"
 
-#### ידנית:
+#### Manually:
 
-1. היכנס ל-"חוקיות"
-2. לחץ על "חוקיות חדשה"
-3. מלא את הפרטים:
-   - שם החוקיות
-   - תבנית תגיות (עם ביטויים כמו `{{switch(...)}}`)
+1. Go to "Tagging Rules"
+2. Click "New Rule"
+3. Fill in the details:
+   - Rule Name
+   - Tags Template (with expressions like `{{switch(...)}}`)
 
-### 3. עיבוד הזמנות
+### 3. Processing Orders
 
-1. היכנס ל-"עיבוד הזמנות"
-2. בחר חנות
-3. בחר חוקיות (או השאר ריק לכל החוקיות הפעילות)
-4. הכנס מספרי הזמנות מופרדים בפסיק
-5. בחר אם לדרוס תגיות קיימות
-6. לחץ על "התחל עיבוד"
-7. עקוב אחר ההתקדמות בסרגל ההתקדמות
+1. Go to "Order Processing"
+2. Select a store
+3. Select a rule (or leave empty for all active rules)
+4. Enter order IDs separated by commas
+5. Choose whether to overwrite existing tags
+6. Click "Start Processing"
+7. Monitor progress in the progress bar
 
-### 4. הגדרת Webhook
+### 4. Webhook Setup
 
-1. ב-Shopify Admin → Settings → Notifications → Webhooks
-2. צור webhook חדש:
+1. In Shopify Admin → Settings → Notifications → Webhooks
+2. Create a new webhook:
    - Event: `Order creation`
    - Format: `JSON`
    - URL: `https://your-domain.com/webhooks/shopify/order-created`
    - API version: Latest
-3. העתק את ה-Webhook Secret ל-`.env`:
+3. Copy the Webhook Secret to `.env`:
    ```
    SHOPIFY_WEBHOOK_SECRET=your_secret_here
    ```
 
-## תבניות תגיות
+## Tag Templates
 
-המערכת תומכת בביטויים מורכבים:
+The system supports complex expressions:
 
-### דוגמה בסיסית:
+### Basic Example:
 ```
 Tag1, Tag2, Tag3
 ```
 
-### עם ביטויים:
+### With Expressions:
 ```
 {{switch(12.Days + "-" + 12.Gram; "14D-50"; "A"; "14D-75"; "A"; "Unknown")}}
 ```
 
-### פונקציות זמינות:
+### Available Functions:
 
-- `{{get(array, index)}}` - מחלץ אלמנט ממערך
-- `{{split(string, delimiter)}}` - מחלק מחרוזת למערך
-- `{{switch(value; case1; result1; case2; result2; ...; default)}}` - switch statement
-- `{{12.Days}}` - גישה לשדות מההזמנה (line item index 12, field Days)
+- `{{get(array, index)}}` - Extract element from array
+- `{{split(string, delimiter)}}` - Split string into array
+- `{{switch(value; case1; result1; case2; result2; ...; default)}}` - Switch statement
+- `{{12.Days}}` - Access order fields (line item index 12, field Days)
 
 ## API Endpoints
 
@@ -174,26 +174,26 @@ GET /orders/results/{job}
 POST /tagging-rules/{rule}/test
 ```
 
-## פתרון בעיות
+## Troubleshooting
 
-### Queue לא עובד:
+### Queue not working:
 ```bash
 php artisan queue:work --queue=order-processing
 ```
 
-### Cache לא מתעדכן:
+### Cache not updating:
 ```bash
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
 ```
 
-### שגיאת OpenRouter:
-ודא שה-API key מוגדר נכון ב-`.env`:
+### OpenRouter Error:
+Make sure the API key is correctly set in `.env`:
 ```
 OPENROUTER_API_KEY=sk-or-v1-...
 ```
 
-## רישיון
+## License
 
 MIT License

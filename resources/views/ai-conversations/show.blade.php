@@ -2,9 +2,9 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('שיחה עם AI') }}
+                {{ __('AI Conversation') }}
             </h2>
-            <a href="{{ route('ai-conversations.index') }}" class="text-gray-600 hover:text-gray-900">חזרה לרשימה</a>
+            <a href="{{ route('ai-conversations.index') }}" class="text-gray-600 hover:text-gray-900">Back to List</a>
         </div>
     </x-slot>
 
@@ -13,7 +13,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <div class="mb-4">
-                        <p class="text-sm text-gray-600">חנות: <strong>{{ $aiConversation->store->name }}</strong></p>
+                        <p class="text-sm text-gray-600">Store: <strong>{{ $aiConversation->store->name }}</strong></p>
                     </div>
 
                     <!-- Chat Messages -->
@@ -36,16 +36,16 @@
                         <div class="flex">
                             <textarea id="message-input" name="message" rows="3" required
                                 class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                placeholder="הכנס את החוקיות שלך כאן..."></textarea>
-                            <button type="submit" class="mr-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                שלח
+                                placeholder="Enter your rules here..."></textarea>
+                            <button type="submit" class="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                Send
                             </button>
                         </div>
                     </form>
 
                     <!-- Order Data Input -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">דוגמת הזמנה (JSON) - אופציונלי</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Sample Order (JSON) - Optional</label>
                         <textarea id="order-data" rows="5"
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
                             placeholder='{"id": "123", "line_items": [...]}'></textarea>
@@ -57,15 +57,15 @@
                             @csrf
                             <input type="hidden" id="user-requirements" name="user_requirements">
                             <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                                צור חוקיות מהשיחה
+                                Generate Rule from Conversation
                             </button>
                         </form>
                     @endif
 
                     @if($aiConversation->generatedRule)
                         <div class="mt-4 p-4 bg-green-100 border border-green-400 rounded-lg">
-                            <p class="text-sm text-green-800">חוקיות נוצרה בהצלחה!</p>
-                            <a href="{{ route('tagging-rules.edit', $aiConversation->generatedRule) }}" class="text-blue-600 hover:text-blue-800">ערוך חוקיות</a>
+                            <p class="text-sm text-green-800">Rule generated successfully!</p>
+                            <a href="{{ route('tagging-rules.edit', $aiConversation->generatedRule) }}" class="text-blue-600 hover:text-blue-800">Edit Rule</a>
                         </div>
                     @endif
                 </div>
@@ -106,10 +106,10 @@
                 if (data.success) {
                     addMessage('assistant', data.message);
                 } else {
-                    alert('שגיאה: ' + data.error);
+                    alert('Error: ' + data.error);
                 }
             } catch (error) {
-                alert('שגיאה בתקשורת: ' + error.message);
+                alert('Communication error: ' + error.message);
             }
         });
 
@@ -118,7 +118,7 @@
                 e.preventDefault();
                 const orderData = orderDataInput.value.trim();
                 if (!orderData) {
-                    alert('אנא הכנס דוגמת הזמנה');
+                    alert('Please enter sample order data');
                     return;
                 }
 
@@ -144,13 +144,13 @@
 
                     const data = await response.json();
                     if (data.success) {
-                        alert('חוקיות נוצרה בהצלחה!');
+                        alert('Rule generated successfully!');
                         window.location.reload();
                     } else {
-                        alert('שגיאה: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 } catch (error) {
-                    alert('שגיאה בתקשורת: ' + error.message);
+                    alert('Communication error: ' + error.message);
                 }
             });
         }
@@ -162,7 +162,7 @@
             messageDiv.innerHTML = `
                 <div class="inline-block max-w-3xl p-3 rounded-lg ${role === 'user' ? 'bg-blue-500 text-white' : 'bg-white border border-gray-300'}">
                     <p class="text-sm">${content}</p>
-                    <p class="text-xs mt-1 opacity-75">${new Date().toLocaleString('he-IL')}</p>
+                    <p class="text-xs mt-1 opacity-75">${new Date().toLocaleString()}</p>
                 </div>
             `;
             chatMessages.appendChild(messageDiv);

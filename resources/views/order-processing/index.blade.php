@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('עיבוד הזמנות') }}
+            {{ __('Order Processing') }}
         </h2>
     </x-slot>
 
@@ -10,14 +10,14 @@
             <!-- Process Orders Form -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold mb-4">עיבוד הזמנות חדש</h3>
+                    <h3 class="text-lg font-semibold mb-4">New Order Processing</h3>
                     <form id="process-orders-form">
                         @csrf
                         <div class="mb-4">
-                            <label for="store_id" class="block text-sm font-medium text-gray-700">חנות</label>
+                            <label for="store_id" class="block text-sm font-medium text-gray-700">Store</label>
                             <select name="store_id" id="store_id" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">בחר חנות</option>
+                                <option value="">Select Store</option>
                                 @foreach($stores as $store)
                                     <option value="{{ $store->id }}">{{ $store->name }}</option>
                                 @endforeach
@@ -25,15 +25,15 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="rule_id" class="block text-sm font-medium text-gray-700">חוקיות (אופציונלי - אם לא נבחר, כל החוקיות הפעילות יופעלו)</label>
+                            <label for="rule_id" class="block text-sm font-medium text-gray-700">Rule (Optional - if not selected, all active rules will be applied)</label>
                             <select name="rule_id" id="rule_id"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">כל החוקיות הפעילות</option>
+                                <option value="">All Active Rules</option>
                             </select>
                         </div>
 
                         <div class="mb-4">
-                            <label for="order_ids" class="block text-sm font-medium text-gray-700">מספרי הזמנות (מופרדים בפסיק)</label>
+                            <label for="order_ids" class="block text-sm font-medium text-gray-700">Order IDs (comma-separated)</label>
                             <textarea name="order_ids" id="order_ids" rows="5" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 placeholder="123456789, 987654321, 456789123"></textarea>
@@ -43,12 +43,12 @@
                             <label class="flex items-center">
                                 <input type="checkbox" name="overwrite_existing_tags" value="1"
                                     class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <span class="mr-2 text-sm text-gray-700">דרוס תגיות קיימות</span>
+                                <span class="ml-2 text-sm text-gray-700">Overwrite Existing Tags</span>
                             </label>
                         </div>
 
                         <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            התחל עיבוד
+                            Start Processing
                         </button>
                     </form>
                 </div>
@@ -57,7 +57,7 @@
             <!-- Processing Jobs List -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold mb-4">עבודות עיבוד</h3>
+                    <h3 class="text-lg font-semibold mb-4">Processing Jobs</h3>
                     <div id="jobs-list">
                         @include('order-processing.jobs-list', ['jobs' => $jobs])
                     </div>
@@ -75,14 +75,14 @@
         storeSelect.addEventListener('change', async () => {
             const storeId = storeSelect.value;
             if (!storeId) {
-                ruleSelect.innerHTML = '<option value="">כל החוקיות הפעילות</option>';
+                ruleSelect.innerHTML = '<option value="">All Active Rules</option>';
                 return;
             }
 
             try {
                 const response = await fetch(`/tagging-rules?store_id=${storeId}`);
                 const rules = await response.json();
-                ruleSelect.innerHTML = '<option value="">כל החוקיות הפעילות</option>';
+                ruleSelect.innerHTML = '<option value="">All Active Rules</option>';
                 rules.forEach(rule => {
                     const option = document.createElement('option');
                     option.value = rule.id;
@@ -106,14 +106,14 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('עיבוד התחיל! מספר עבודה: ' + data.job_id);
+                    alert('Processing started! Job ID: ' + data.job_id);
                     processForm.reset();
                     loadJobs();
                 } else {
-                    alert('שגיאה: ' + (data.error || 'שגיאה לא ידועה'));
+                    alert('Error: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
-                alert('שגיאה בתקשורת: ' + error.message);
+                alert('Communication error: ' + error.message);
             }
         });
 

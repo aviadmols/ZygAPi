@@ -58,7 +58,7 @@ class AiConversationController extends Controller
         ]);
 
         return redirect()->route('ai-conversations.show', $conversation)
-            ->with('success', 'שיחה חדשה נוצרה');
+            ->with('success', 'New conversation created');
     }
 
     /**
@@ -94,7 +94,7 @@ class AiConversationController extends Controller
             if (empty($messages) || count($messages) === 1) {
                 $systemMessage = [
                     'role' => 'system',
-                    'content' => 'אתה עוזר ליצירת חוקיות תגיות להזמנות Shopify. המשתמש יגדיר חוקיות בטקסט ואתה תעזור ליצור מבנה JSON מתאים.',
+                    'content' => 'You are a helper for creating Shopify order tagging rules. The user will define rules in text and you will help create an appropriate JSON structure.',
                 ];
                 array_unshift($messages, $systemMessage);
             }
@@ -146,8 +146,8 @@ class AiConversationController extends Controller
             // Create tagging rule
             $rule = TaggingRule::create([
                 'store_id' => $aiConversation->store_id,
-                'name' => 'חוקיות שנוצרה מ-AI - ' . now()->format('Y-m-d H:i'),
-                'description' => 'נוצרה אוטומטית משיחה עם AI',
+                'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
+                'description' => 'Automatically generated from AI conversation',
                 'rules_json' => $ruleData,
                 'tags_template' => $ruleData['tags_template'] ?? null,
                 'is_active' => false, // User should review before activating
@@ -161,7 +161,7 @@ class AiConversationController extends Controller
             return response()->json([
                 'success' => true,
                 'rule' => $rule,
-                'message' => 'חוקיות נוצרה בהצלחה',
+                'message' => 'Rule generated successfully',
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -179,6 +179,6 @@ class AiConversationController extends Controller
         $aiConversation->delete();
 
         return redirect()->route('ai-conversations.index')
-            ->with('success', 'שיחה נמחקה בהצלחה');
+            ->with('success', 'Conversation deleted successfully');
     }
 }

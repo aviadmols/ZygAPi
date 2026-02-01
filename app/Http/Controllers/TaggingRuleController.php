@@ -61,7 +61,7 @@ class TaggingRuleController extends Controller
         TaggingRule::create($validated);
 
         return redirect()->route('tagging-rules.index')
-            ->with('success', 'חוקיות נוצרה בהצלחה');
+            ->with('success', 'Rule created successfully');
     }
 
     /**
@@ -99,7 +99,7 @@ class TaggingRuleController extends Controller
         $taggingRule->update($validated);
 
         return redirect()->route('tagging-rules.index')
-            ->with('success', 'חוקיות עודכנה בהצלחה');
+            ->with('success', 'Rule updated successfully');
     }
 
     /**
@@ -110,7 +110,7 @@ class TaggingRuleController extends Controller
         $taggingRule->delete();
 
         return redirect()->route('tagging-rules.index')
-            ->with('success', 'חוקיות נמחקה בהצלחה');
+            ->with('success', 'Rule deleted successfully');
     }
 
     /**

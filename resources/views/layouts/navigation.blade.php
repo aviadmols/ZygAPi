@@ -16,16 +16,16 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <x-nav-link :href="route('stores.index')" :active="request()->routeIs('stores.*')">
-                        {{ __('חנויות') }}
+                        {{ __('Stores') }}
                     </x-nav-link>
                     <x-nav-link :href="route('tagging-rules.index')" :active="request()->routeIs('tagging-rules.*')">
-                        {{ __('חוקיות') }}
+                        {{ __('Tagging Rules') }}
                     </x-nav-link>
                     <x-nav-link :href="route('orders.process.index')" :active="request()->routeIs('orders.*')">
-                        {{ __('עיבוד הזמנות') }}
+                        {{ __('Order Processing') }}
                     </x-nav-link>
                     <x-nav-link :href="route('ai-conversations.index')" :active="request()->routeIs('ai-conversations.*')">
-                        {{ __('שיחות AI') }}
+                        {{ __('AI Conversations') }}
                     </x-nav-link>
                 </div>
             </div>
@@ -83,16 +83,16 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('stores.index')" :active="request()->routeIs('stores.*')">
-                {{ __('חנויות') }}
+                {{ __('Stores') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('tagging-rules.index')" :active="request()->routeIs('tagging-rules.*')">
-                {{ __('חוקיות') }}
+                {{ __('Tagging Rules') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('orders.process.index')" :active="request()->routeIs('orders.*')">
-                {{ __('עיבוד הזמנות') }}
+                {{ __('Order Processing') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('ai-conversations.index')" :active="request()->routeIs('ai-conversations.*')">
-                {{ __('שיחות AI') }}
+                {{ __('AI Conversations') }}
             </x-responsive-nav-link>
         </div>
 

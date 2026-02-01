@@ -42,7 +42,7 @@ class StoreController extends Controller
         Store::create($validated);
 
         return redirect()->route('stores.index')
-            ->with('success', 'חנות נוצרה בהצלחה');
+            ->with('success', 'Store created successfully');
     }
 
     /**
@@ -77,7 +77,7 @@ class StoreController extends Controller
         $store->update($validated);
 
         return redirect()->route('stores.index')
-            ->with('success', 'חנות עודכנה בהצלחה');
+            ->with('success', 'Store updated successfully');
     }
 
     /**
@@ -88,6 +88,6 @@ class StoreController extends Controller
         $store->delete();
 
         return redirect()->route('stores.index')
-            ->with('success', 'חנות נמחקה בהצלחה');
+            ->with('success', 'Store deleted successfully');
     }
 }

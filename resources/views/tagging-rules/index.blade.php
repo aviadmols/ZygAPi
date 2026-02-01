@@ -2,10 +2,10 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('חוקיות תגיות') }}
+                {{ __('Tagging Rules') }}
             </h2>
             <a href="{{ route('tagging-rules.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                {{ __('חוקיות חדשה') }}
+                {{ __('New Rule') }}
             </a>
         </div>
     </x-slot>
@@ -23,10 +23,10 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">שם</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">חנות</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">סטטוס</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">פעולות</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -36,21 +36,21 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $rule->store->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $rule->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                            {{ $rule->is_active ? 'פעיל' : 'לא פעיל' }}
+                                            {{ $rule->is_active ? 'Active' : 'Inactive' }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <a href="{{ route('tagging-rules.edit', $rule) }}" class="text-indigo-600 hover:text-indigo-900">עריכה</a>
+                                        <a href="{{ route('tagging-rules.edit', $rule) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                                         <form action="{{ route('tagging-rules.destroy', $rule) }}" method="POST" class="inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900 mr-4" onclick="return confirm('האם אתה בטוח?')">מחיקה</button>
+                                            <button type="submit" class="text-red-600 hover:text-red-900 ml-4" onclick="return confirm('Are you sure?')">Delete</button>
                                         </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">אין חוקיות</td>
+                                    <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No rules found</td>
                                 </tr>
                             @endforelse
                         </tbody>

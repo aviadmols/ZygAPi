@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('store_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->json('messages'); // הודעות השיחה
+            $table->json('messages'); // Conversation messages
             $table->foreignId('generated_rule_id')->nullable()->constrained('tagging_rules')->onDelete('set null');
             $table->timestamps();
         });

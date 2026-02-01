@@ -29,7 +29,7 @@ class OrderProcessingController extends Controller
         if (empty($orderIds)) {
             return response()->json([
                 'success' => false,
-                'error' => 'לא הוזנו מספרי הזמנות',
+                'error' => 'No order IDs provided',
             ], 400);
         }
 
@@ -51,7 +51,7 @@ class OrderProcessingController extends Controller
         return response()->json([
             'success' => true,
             'job_id' => $processingJob->id,
-            'message' => 'עיבוד ההזמנות התחיל',
+            'message' => 'Order processing started',
         ]);
     }
 

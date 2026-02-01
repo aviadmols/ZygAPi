@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('יצירת חנות חדשה') }}
+            {{ __('Create New Store') }}
         </h2>
     </x-slot>
 
@@ -13,7 +13,7 @@
                         @csrf
 
                         <div class="mb-4">
-                            <label for="name" class="block text-sm font-medium text-gray-700">שם החנות</label>
+                            <label for="name" class="block text-sm font-medium text-gray-700">Store Name</label>
                             <input type="text" name="name" id="name" value="{{ old('name') }}" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             @error('name')
@@ -53,14 +53,14 @@
                             <label class="flex items-center">
                                 <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}
                                     class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <span class="mr-2 text-sm text-gray-700">פעיל</span>
+                                <span class="ml-2 text-sm text-gray-700">Active</span>
                             </label>
                         </div>
 
                         <div class="flex items-center justify-end mt-4">
-                            <a href="{{ route('stores.index') }}" class="text-gray-600 hover:text-gray-900 mr-4">ביטול</a>
+                            <a href="{{ route('stores.index') }}" class="text-gray-600 hover:text-gray-900 mr-4">Cancel</a>
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                שמור
+                                Save
                             </button>
                         </div>
                     </form>

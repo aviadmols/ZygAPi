@@ -2,10 +2,10 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('שיחות AI') }}
+                {{ __('AI Conversations') }}
             </h2>
             <a href="{{ route('ai-conversations.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                {{ __('שיחה חדשה') }}
+                {{ __('New Conversation') }}
             </a>
         </div>
     </x-slot>
@@ -17,11 +17,11 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">חנות</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">הודעות</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">חוקיות נוצרה</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">תאריך</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">פעולות</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Messages</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rule Generated</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -31,24 +31,24 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ count($conversation->messages ?? []) }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if($conversation->generatedRule)
-                                            <a href="{{ route('tagging-rules.edit', $conversation->generatedRule) }}" class="text-blue-600">כן</a>
+                                            <a href="{{ route('tagging-rules.edit', $conversation->generatedRule) }}" class="text-blue-600">Yes</a>
                                         @else
-                                            לא
+                                            No
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $conversation->created_at->format('Y-m-d H:i') }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <a href="{{ route('ai-conversations.show', $conversation) }}" class="text-indigo-600 hover:text-indigo-900">צפה</a>
+                                        <a href="{{ route('ai-conversations.show', $conversation) }}" class="text-indigo-600 hover:text-indigo-900">View</a>
                                         <form action="{{ route('ai-conversations.destroy', $conversation) }}" method="POST" class="inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900 mr-4" onclick="return confirm('האם אתה בטוח?')">מחיקה</button>
+                                            <button type="submit" class="text-red-600 hover:text-red-900 ml-4" onclick="return confirm('Are you sure?')">Delete</button>
                                         </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">אין שיחות</td>
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No conversations</td>
                                 </tr>
                             @endforelse
                         </tbody>
