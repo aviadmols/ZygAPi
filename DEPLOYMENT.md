@@ -249,6 +249,37 @@ composer dump-autoload --optimize
 
 ## Option 2: Cloud Platform Deployment
 
+### Railway
+
+1. Install Railway CLI:
+```bash
+npm install -g @railway/cli
+# OR
+brew install railway
+```
+
+2. Login and initialize:
+```bash
+railway login
+railway init
+```
+
+3. Set environment variables (see `RAILWAY_DEPLOY.md` for full list)
+
+4. Deploy:
+```bash
+railway up
+```
+
+5. Run migrations:
+```bash
+railway run php artisan migrate --force
+```
+
+6. Add Worker service for queue processing in Railway dashboard
+
+See `RAILWAY_DEPLOY.md` for detailed Railway deployment instructions.
+
 ### Heroku
 
 1. Install Heroku CLI
@@ -261,7 +292,7 @@ worker: php artisan queue:work --queue=order-processing --sleep=3 --tries=3
 3. Deploy:
 ```bash
 heroku create your-app-name
-git push heroku master
+git push heroku main
 heroku run php artisan migrate --force
 ```
 
