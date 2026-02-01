@@ -1,0 +1,152 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Store;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class ShopifyService
+{
+    protected Store $store;
+
+    public function __construct(Store $store)
+    {
+        $this->store = $store;
+    }
+
+    /**
+     * Get order from Shopify
+     */
+    public function getOrder(string $orderId): array
+    {
+        $url = "https://{$this->store->shopify_store_url}/admin/api/2024-10/orders/{$orderId}.json";
+
+        try {
+            $response = Http::withHeaders([
+                'X-Shopify-Access-Token' => $this->store->shopify_access_token,
+                'Content-Type' => 'application/json',
+            ])->get($url);
+
+            if ($response->failed()) {
+                $errorMsg = "Failed to fetch order {$orderId}: HTTP {$response->status()}";
+                if ($response->status() == 401) {
+                    $errorMsg .= " - Invalid Shopify Access Token or insufficient permissions";
+                } elseif ($response->status() == 404) {
+                    $errorMsg .= " - Order not found";
+                }
+                Log::error($errorMsg);
+                throw new \Exception($errorMsg);
+            }
+
+            $data = $response->json();
+
+            if (!isset($data['order'])) {
+                throw new \Exception("Invalid response from Shopify API");
+            }
+
+            return $data['order'];
+        } catch (\Exception $e) {
+            Log::error("Shopify API Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Update order tags in Shopify
+     */
+    public function updateOrderTags(string $orderId, array $tags, bool $overwrite = false): bool
+    {
+        $url = "https://{$this->store->shopify_store_url}/admin/api/2024-10/orders/{$orderId}.json";
+
+        // If not overwriting, get existing tags first
+        if (!$overwrite) {
+            try {
+                $order = $this->getOrder($orderId);
+                $existingTags = isset($order['tags']) ? $order['tags'] : '';
+                $existingTagsArray = array_filter(array_map('trim', explode(',', $existingTags)));
+                $tags = array_unique(array_merge($existingTagsArray, $tags));
+            } catch (\Exception $e) {
+                Log::warning("Could not fetch existing tags, proceeding with new tags only: " . $e->getMessage());
+            }
+        }
+
+        $tagsString = implode(', ', $tags);
+
+        try {
+            $response = Http::withHeaders([
+                'X-Shopify-Access-Token' => $this->store->shopify_access_token,
+                'Content-Type' => 'application/json',
+            ])->put($url, [
+                'order' => [
+                    'id' => $orderId,
+                    'tags' => $tagsString,
+                ],
+            ]);
+
+            if ($response->failed()) {
+                Log::error("Failed to update order {$orderId} tags: HTTP {$response->status()}");
+                return false;
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Shopify API Error updating tags: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get all orders for a customer
+     */
+    public function getCustomerOrders(string $customerId): array
+    {
+        $allOrders = [];
+        $url = "https://{$this->store->shopify_store_url}/admin/api/2024-10/orders.json?customer_id={$customerId}&status=any&limit=250";
+
+        do {
+            try {
+                $response = Http::withHeaders([
+                    'X-Shopify-Access-Token' => $this->store->shopify_access_token,
+                    'Content-Type' => 'application/json',
+                ])->get($url);
+
+                if ($response->failed()) {
+                    break;
+                }
+
+                $data = $response->json();
+                if (isset($data['orders'])) {
+                    $allOrders = array_merge($allOrders, $data['orders']);
+                }
+
+                // Check for pagination
+                $linkHeader = $response->header('Link');
+                $url = $this->extractLinkHeader($linkHeader, 'next');
+
+            } catch (\Exception $e) {
+                Log::error("Error fetching customer orders: " . $e->getMessage());
+                break;
+            }
+        } while ($url);
+
+        return $allOrders;
+    }
+
+    /**
+     * Extract Link header for pagination
+     */
+    protected function extractLinkHeader(?string $headers, string $rel): ?string
+    {
+        if (!$headers) {
+            return null;
+        }
+
+        $pattern = '/<([^>]+)>;\s*rel="' . $rel . '"/';
+        if (preg_match($pattern, $headers, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+}
