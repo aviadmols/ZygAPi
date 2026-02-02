@@ -6,7 +6,7 @@
                 <!-- App Name -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="font-semibold text-xl text-gray-800">
-                        {{ config('app.name', 'Zyg Automations') }}
+                        {{ config('app.name', 'Zyg AutoTag') }}
                     </a>
                 </div>
 
@@ -26,6 +26,12 @@
                     </x-nav-link>
                     <x-nav-link :href="route('ai-conversations.index')" :active="request()->routeIs('ai-conversations.*')">
                         {{ __('AI Conversations') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('prompt-templates.index')" :active="request()->routeIs('prompt-templates.*')">
+                        {{ __('AI Prompts') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('settings.openrouter.index')" :active="request()->routeIs('settings.openrouter.*')">
+                        {{ __('Settings') }}
                     </x-nav-link>
                 </div>
             </div>
@@ -93,6 +99,12 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('ai-conversations.index')" :active="request()->routeIs('ai-conversations.*')">
                 {{ __('AI Conversations') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('prompt-templates.index')" :active="request()->routeIs('prompt-templates.*')">
+                {{ __('AI Prompts') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('settings.openrouter.index')" :active="request()->routeIs('settings.openrouter.*')">
+                {{ __('Settings') }}
             </x-responsive-nav-link>
         </div>
 

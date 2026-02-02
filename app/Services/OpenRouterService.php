@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\PromptTemplate;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +14,7 @@ class OpenRouterService
 
     public function __construct()
     {
-        $this->apiKey = config('openrouter.api_key');
+        $this->apiKey = (string) (Setting::get('OPENROUTER_API_KEY') ?: config('openrouter.api_key'));
     }
 
     /**
@@ -21,17 +23,17 @@ class OpenRouterService
     public function chat(array $messages, ?string $model = null): array
     {
         if (!$this->apiKey) {
-            throw new \Exception('OpenRouter API key not configured');
+            throw new \Exception('OpenRouter API key not configured. Set it in Settings → OpenRouter.');
         }
 
-        $model = $model ?? config('openrouter.default_model', 'anthropic/claude-3.5-sonnet');
+        $model = $model ?? Setting::get('OPENROUTER_DEFAULT_MODEL') ?: config('openrouter.default_model', 'anthropic/claude-3.5-sonnet');
 
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
                 'HTTP-Referer' => config('app.url'),
-                'X-Title' => 'Zyg Automations',
+                'X-Title' => 'Zyg AutoTag',
             ])->post("{$this->baseUrl}/chat/completions", [
                 'model' => $model,
                 'messages' => $messages,
@@ -59,37 +61,13 @@ class OpenRouterService
     }
 
     /**
-     * Generate tagging rule from order data and user requirements
+     * Generate tagging rule from order data and user requirements.
+     * Uses system prompt from DB (Prompt Management) or built-in default.
      */
     public function generateTaggingRule(array $orderData, string $userRequirements): array
     {
-        $systemPrompt = "You are an expert at creating Shopify order tagging rules. 
-        You need to analyze order data and user requirements to create a structured tagging rule.
-        
-        The rule should be returned as JSON with the following structure:
-        {
-            'conditions': [
-                {
-                    'field': 'path.to.field',
-                    'operator': 'equals|contains|exists|greater_than|less_than',
-                    'value': 'expected_value'
-                }
-            ],
-            'tags': [
-                'tag1',
-                'tag2',
-                '{{expression}}' // Can include expressions like {{get(split(...))}}
-            ],
-            'tags_template': 'Template with expressions like {{switch(...)}}'
-        }
-        
-        Support these functions in tag expressions:
-        - get(array, index) - Get element from array
-        - split(string, delimiter) - Split string into array
-        - switch(value, case1, result1, case2, result2, ..., default) - Switch statement
-        
-        Example tag template:
-        {{switch(12.Days + \"-\" + 12.Gram; \"14D-50\"; \"A\"; \"14D-75\"; \"A\"; \"Unknown\")}}";
+        $systemPrompt = PromptTemplate::getBySlug('tagging_rule_generation')
+            ?? $this->getDefaultTaggingPrompt();
 
         $userPrompt = "Order Data:\n" . json_encode($orderData, JSON_PRETTY_PRINT) . "\n\nUser Requirements:\n" . $userRequirements;
 
@@ -124,5 +102,13 @@ class OpenRouterService
         }
 
         return $rule;
+    }
+
+    /**
+     * Built-in default prompt when none is stored in DB.
+     */
+    protected function getDefaultTaggingPrompt(): string
+    {
+        return \Database\Seeders\PromptTemplateSeeder::DEFAULT_TAGGING_PROMPT;
     }
 }

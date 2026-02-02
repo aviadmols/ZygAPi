@@ -34,6 +34,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('ai-conversations', \App\Http\Controllers\AiConversationController::class);
     Route::post('ai-conversations/{ai_conversation}/chat', [\App\Http\Controllers\AiConversationController::class, 'chat'])->name('ai-conversations.chat');
     Route::post('ai-conversations/{ai_conversation}/generate-rule', [\App\Http\Controllers\AiConversationController::class, 'generateRule'])->name('ai-conversations.generate-rule');
+
+    // AI Prompt Management
+    Route::get('prompt-templates', [\App\Http\Controllers\PromptTemplateController::class, 'index'])->name('prompt-templates.index');
+    Route::get('prompt-templates/{promptTemplate}/edit', [\App\Http\Controllers\PromptTemplateController::class, 'edit'])->name('prompt-templates.edit');
+    Route::put('prompt-templates/{promptTemplate}', [\App\Http\Controllers\PromptTemplateController::class, 'update'])->name('prompt-templates.update');
+
+    // OpenRouter Settings (API key + model)
+    Route::get('settings/openrouter', [\App\Http\Controllers\OpenRouterSettingsController::class, 'index'])->name('settings.openrouter.index');
+    Route::put('settings/openrouter', [\App\Http\Controllers\OpenRouterSettingsController::class, 'update'])->name('settings.openrouter.update');
 });
 
 // Webhooks (without auth - with HMAC verification)
