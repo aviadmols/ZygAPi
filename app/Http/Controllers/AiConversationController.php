@@ -157,6 +157,7 @@ class AiConversationController extends Controller
             $validated = $request->validate([
                 'order_id' => 'required|string',
                 'order_data' => 'nullable|string',
+                'php_code' => 'nullable|string',
             ]);
         } catch (ValidationException $e) {
             Log::warning('[AI Conversation] TEST_ORDER validation failed', ['conversation_id' => $aiConversation->id, 'error' => $e->getMessage()]);
@@ -170,6 +171,7 @@ class AiConversationController extends Controller
             'conversation_id' => $aiConversation->id,
             'order_id' => $validated['order_id'],
             'has_order_data' => !empty($validated['order_data']),
+            'has_php_code' => !empty(trim($validated['php_code'] ?? '')),
         ]);
 
         try {
@@ -178,30 +180,35 @@ class AiConversationController extends Controller
             $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
             Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $order['id'] ?? $validated['order_id']]);
 
-            $userRequirements = $this->getUserRequirementsFromConversation($aiConversation);
-            if (empty($userRequirements)) {
-                Log::warning('[AI Conversation] TEST_ORDER: no user requirements');
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No user requirements in conversation. Send at least one message describing what to check and which tags to return.',
-                ], 422);
-            }
-            Log::info('[AI Conversation] TEST_ORDER step: user_requirements length', ['length' => strlen($userRequirements)]);
-
-            $orderSample = $order;
-            if (!empty($validated['order_data'])) {
-                $decoded = json_decode($validated['order_data'], true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $orderSample = $decoded;
+            $phpCode = trim($validated['php_code'] ?? '');
+            if ($phpCode === '') {
+                $userRequirements = $this->getUserRequirementsFromConversation($aiConversation);
+                if (empty($userRequirements)) {
+                    Log::warning('[AI Conversation] TEST_ORDER: no user requirements');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No user requirements in conversation. Send at least one message describing what to check and which tags to return, or paste PHP code in the PHP Rule field.',
+                    ], 422);
                 }
-            }
+                Log::info('[AI Conversation] TEST_ORDER step: user_requirements length', ['length' => strlen($userRequirements)]);
 
-            $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements);
-            $phpCode = $result['php_code'];
-            Log::info('[AI Conversation] TEST_ORDER step: PHP generated', ['php_code_length' => strlen($phpCode)]);
+                $orderSample = $order;
+                if (!empty($validated['order_data'])) {
+                    $decoded = json_decode($validated['order_data'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $orderSample = $decoded;
+                    }
+                }
+
+                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements);
+                $phpCode = $result['php_code'];
+                Log::info('[AI Conversation] TEST_ORDER step: PHP generated', ['php_code_length' => strlen($phpCode)]);
+            } else {
+                Log::info('[AI Conversation] TEST_ORDER step: using provided php_code', ['php_code_length' => strlen($phpCode)]);
+            }
 
             $taggingEngine = new TaggingEngineService();
-            $tags = $taggingEngine->executePhpRule($phpCode, $order);
+            $tags = $taggingEngine->executePhpRule($phpCode, $order, $store);
             Log::info('[AI Conversation] TEST_ORDER response', [
                 'conversation_id' => $aiConversation->id,
                 'success' => true,

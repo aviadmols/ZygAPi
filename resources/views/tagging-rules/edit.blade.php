@@ -44,7 +44,7 @@
                         <!-- PHP Rule = main field that determines this rule -->
                         <div class="mb-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
                             <label for="php_rule" class="block text-sm font-semibold text-gray-800">PHP Rule – this code defines the rule</label>
-                            <p class="mt-1 text-xs text-gray-600 mb-2">The system runs this PHP for each order. Use <code>$order</code> (the order array) and set <code>$tags</code> (array of strings). When this field has content, it is used; JSON and template below are ignored.</p>
+                            <p class="mt-1 text-xs text-gray-600 mb-2">The system runs this PHP for each order. Use <code>$order</code> (the order array) and set <code>$tags</code> (array of strings). <code>$shopDomain</code> and <code>$accessToken</code> are also available for Shopify API calls (e.g. curl). You may use <code>return;</code> to exit early. When this field has content, it is used; JSON and template below are ignored.</p>
                             <textarea name="php_rule" id="php_rule" rows="14"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
                                 placeholder="$tags = [];&#10;if (!empty($order['line_items'][0]['properties'])) { ... }">{{ old('php_rule', $taggingRule->php_rule) }}</textarea>

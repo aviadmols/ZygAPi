@@ -52,11 +52,18 @@
                         <p class="mt-1 text-xs text-gray-500">Paste order JSON, or leave empty and use Order number below to fetch.</p>
                     </div>
 
-                    <!-- Test with order number -->
+                    <!-- PHP Rule: edit and test -->
                     @if(count($aiConversation->messages ?? []) > 0)
+                        <div class="mb-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                            <h3 class="text-sm font-semibold text-gray-800 mb-2">PHP Rule – edit and run tests</h3>
+                            <p class="text-xs text-gray-600 mb-2">Edit the PHP code below. If empty, Test will generate it from this conversation. After a test, the generated code appears here so you can edit and test again.</p>
+                            <label for="php-rule-edit" class="block text-sm font-medium text-gray-700 mb-1">PHP Rule (use $order and set $tags)</label>
+                            <textarea id="php-rule-edit" rows="14" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
+                                placeholder="$tags = [];&#10;// If you leave this empty and click Test, PHP will be generated from the conversation above."></textarea>
+                        </div>
                         <div class="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                             <h3 class="text-sm font-semibold text-gray-800 mb-2">Test with order number</h3>
-                            <p class="text-xs text-gray-600 mb-3">Enter an order ID or order number to see which tags the AI would apply (generates PHP from this conversation and runs it on that order).</p>
+                            <p class="text-xs text-gray-600 mb-3">Enter an order ID or order number. If PHP Rule above has code, it will be used; otherwise PHP is generated from this conversation.</p>
                             <div class="flex flex-wrap items-end gap-4">
                                 <div class="flex-1 min-w-[180px]">
                                     <label for="test-order-id" class="block text-sm font-medium text-gray-700 mb-1">Order ID or order number</label>
@@ -98,13 +105,13 @@
                         </div>
                     @endif
 
-                    <!-- Debug log: request/response at each step (easy to debug) -->
+                    <!-- Debug log: request/response at each step -->
                     <div class="mt-6 pt-6 border-t border-gray-300">
                         <details class="bg-gray-100 rounded-lg border border-gray-300" id="debug-log-details">
-                            <summary class="px-4 py-3 cursor-pointer font-medium text-gray-700 select-none">Debug log – מה התקבל ומה חזר (לכל שלב)</summary>
+                            <summary class="px-4 py-3 cursor-pointer font-medium text-gray-700 select-none">Debug log – request and response for each step</summary>
                             <div class="p-4">
-                                <p class="text-xs text-gray-500 mb-2">כל פעולה (Send, Test, Generate Rule) תופיע כאן עם הבקשה והתשובה.</p>
-                                <button type="button" id="debug-log-clear" class="text-xs text-gray-600 hover:text-gray-800 underline mb-2">נקה לוג</button>
+                                <p class="text-xs text-gray-500 mb-2">Each action (Send, Test, Generate Rule) is shown here with request and response.</p>
+                                <button type="button" id="debug-log-clear" class="text-xs text-gray-600 hover:text-gray-800 underline mb-2">Clear log</button>
                                 <pre id="debug-log" class="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap break-words"></pre>
                             </div>
                         </details>
@@ -125,7 +132,7 @@
 
         function debugLog(label, obj) {
             if (!debugLogEl) return;
-            const ts = new Date().toLocaleTimeString('he-IL');
+            const ts = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const line = '[' + ts + '] ' + label + '\n' + (typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2)) + '\n\n';
             debugLogEl.textContent = (debugLogEl.textContent || '') + line;
             debugLogEl.scrollTop = debugLogEl.scrollHeight;
@@ -139,7 +146,7 @@
             if (!message) return;
 
             const body = { message: message, order_data: orderDataInput.value || null };
-            debugLog('CHAT – Request (נשלח)', body);
+            debugLog('CHAT – Request (sent)', body);
 
             addMessage('user', message);
             messageInput.value = '';
@@ -156,7 +163,7 @@
                 });
 
                 const data = await response.json();
-                debugLog('CHAT – Response (חזר)', { success: data.success, message_length: data.message ? data.message.length : 0, error: data.error || null });
+                debugLog('CHAT – Response (received)', { success: data.success, message_length: data.message ? data.message.length : 0, error: data.error || null });
                 if (data.success) {
                     addMessage('assistant', data.message);
                 } else {
@@ -184,7 +191,7 @@
                 document.getElementById('user-requirements').value = userMessages;
 
                 const body = { order_data: orderData || null, order_id: orderIdForSample, user_requirements: userMessages };
-                debugLog('GENERATE_RULE – Request (נשלח)', body);
+                debugLog('GENERATE_RULE – Request (sent)', body);
 
                 try {
                     const response = await fetch(`{{ route('ai-conversations.generate-rule', $aiConversation) }}`, {
@@ -200,13 +207,13 @@
                     const contentType = response.headers.get('content-type');
                     if (!contentType || !contentType.includes('application/json')) {
                         const text = await response.text();
-                        debugLog('GENERATE_RULE – Response (חזר) – לא JSON', 'Status: ' + response.status + '\n' + text.slice(0, 500));
+                        debugLog('GENERATE_RULE – Response (not JSON)', 'Status: ' + response.status + '\n' + text.slice(0, 500));
                         alert('Server error (received HTML instead of JSON). Set APP_DEBUG=true on Railway to see details. Status: ' + response.status);
                         return;
                     }
 
                     const data = await response.json();
-                    debugLog('GENERATE_RULE – Response (חזר)', { success: data.success, rule_id: data.rule?.id, rule_name: data.rule?.name, error: data.error || null });
+                    debugLog('GENERATE_RULE – Response (received)', { success: data.success, rule_id: data.rule?.id, rule_name: data.rule?.name, error: data.error || null });
                     if (data.success) {
                         alert('Rule generated successfully! You can edit and test it in Tagging Rules.');
                         window.location.reload();
@@ -230,16 +237,20 @@
                     testOrderResults.classList.remove('hidden');
                     return;
                 }
-                const userMessages = Array.from(chatMessages.querySelectorAll('[data-role="user"]'))
-                    .map(el => el.textContent.trim())
-                    .join('\n');
-                if (!userMessages) {
-                    testOrderResults.innerHTML = '<p class="text-amber-600 text-sm">Send at least one message describing what to check and which tags to return.</p>';
-                    testOrderResults.classList.remove('hidden');
-                    return;
+                const phpRuleEdit = document.getElementById('php-rule-edit');
+                const phpCodeToSend = phpRuleEdit ? phpRuleEdit.value.trim() : '';
+                if (!phpCodeToSend) {
+                    const userMessages = Array.from(chatMessages.querySelectorAll('[data-role="user"]'))
+                        .map(el => el.textContent.trim())
+                        .join('\n');
+                    if (!userMessages) {
+                        testOrderResults.innerHTML = '<p class="text-amber-600 text-sm">Send at least one message describing what to check and which tags to return, or paste PHP code in the PHP Rule field above.</p>';
+                        testOrderResults.classList.remove('hidden');
+                        return;
+                    }
                 }
-                const body = { order_id: orderId, order_data: orderDataInput.value.trim() || null };
-                debugLog('TEST_ORDER – Request (נשלח)', body);
+                const body = { order_id: orderId, order_data: orderDataInput.value.trim() || null, php_code: phpCodeToSend || null };
+                debugLog('TEST_ORDER – Request (sent)', body);
 
                 testOrderResults.innerHTML = '<p class="text-gray-500 text-sm">Running test...</p>';
                 testOrderResults.classList.remove('hidden');
@@ -254,8 +265,9 @@
                         body: JSON.stringify(body)
                     });
                     const data = await response.json();
-                    debugLog('TEST_ORDER – Response (חזר)', { success: data.success, tags: data.tags || [], tags_count: (data.tags || []).length, php_code_length: data.php_code ? data.php_code.length : 0, error: data.error || null });
+                    debugLog('TEST_ORDER – Response (received)', { success: data.success, tags: data.tags || [], tags_count: (data.tags || []).length, php_code_length: data.php_code ? data.php_code.length : 0, error: data.error || null });
                     if (data.success) {
+                        if (data.php_code && phpRuleEdit) phpRuleEdit.value = data.php_code;
                         const tags = data.tags || [];
                         let html = '<p class="text-sm font-medium text-gray-700 mb-2">Tags that would be applied:</p>';
                         if (tags.length) {
@@ -264,7 +276,7 @@
                             html += '<p class="text-gray-500 text-sm mb-3">No tags.</p>';
                         }
                         if (data.php_code) {
-                            html += '<details class="mt-2"><summary class="text-sm cursor-pointer text-gray-600">Show generated PHP</summary><pre class="mt-2 p-2 bg-gray-100 rounded text-xs overflow-x-auto">' + (data.php_code || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></details>';
+                            html += '<p class="text-xs text-gray-500 mt-2">PHP code updated in the PHP Rule field above. Edit and run Test again if needed.</p>';
                         }
                         testOrderResults.innerHTML = html;
                     } else {

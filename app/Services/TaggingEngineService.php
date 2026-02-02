@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Store;
 use App\Models\TaggingRule;
 use Illuminate\Support\Facades\Log;
 
@@ -207,7 +208,9 @@ class TaggingEngineService
     public function extractTags(array $order, TaggingRule $rule): array
     {
         if (!empty($rule->php_rule)) {
-            return $this->executePhpRule($rule->php_rule, $order);
+            $rule->loadMissing('store');
+            $store = $rule->relationLoaded('store') ? $rule->store : null;
+            return $this->executePhpRule($rule->php_rule, $order, $store);
         }
 
         $tags = [];
@@ -280,10 +283,13 @@ class TaggingEngineService
     }
 
     /**
-     * Execute PHP rule in isolated process. Code receives $order and must set $tags (array of strings).
+     * Execute PHP rule in isolated process.
+     * Code receives \$order and must set \$tags (array of strings).
+     * When \$store is provided, \$shopDomain and \$accessToken are also available for API calls (e.g. Shopify).
+     * User code can use return; – it will only exit the inner closure, not the script.
      * Returns array of tag strings, or empty on error.
      */
-    public function executePhpRule(string $phpCode, array $order): array
+    public function executePhpRule(string $phpCode, array $order, ?Store $store = null): array
     {
         $orderJson = json_encode($order);
         if ($orderJson === false) {
@@ -291,12 +297,22 @@ class TaggingEngineService
             return [];
         }
         $orderEscaped = addcslashes($orderJson, "'\\");
+        $shopDomain = '';
+        $accessToken = '';
+        if ($store) {
+            $shopDomain = addcslashes((string) $store->shopify_store_url, "'\\");
+            $accessToken = addcslashes((string) $store->shopify_access_token, "'\\");
+        }
         $wrapper = <<<PHP
 <?php
 error_reporting(E_ALL & ~E_NOTICE);
 \$order = json_decode('{$orderEscaped}', true);
 \$tags = [];
+\$shopDomain = '{$shopDomain}';
+\$accessToken = '{$accessToken}';
+(function() use (&\$tags, \$order, \$shopDomain, \$accessToken) {
 {$phpCode}
+})();
 if (!is_array(\$tags)) {
     \$tags = [];
 }

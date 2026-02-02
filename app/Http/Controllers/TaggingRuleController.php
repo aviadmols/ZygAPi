@@ -183,6 +183,8 @@ class TaggingRuleController extends Controller
             }
 
             $rule = new TaggingRule();
+            $rule->store_id = $validated['store_id'];
+            $rule->setRelation('store', $store);
             $rule->rules_json = $rulesJson;
             $rule->tags_template = $validated['tags_template'] ?? null;
             $rule->php_rule = $validated['php_rule'] ?? null;

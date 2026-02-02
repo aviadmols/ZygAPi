@@ -86,10 +86,10 @@ You receive:
 ## Your task
 
 Generate **only** PHP code (no markdown, no explanation) that:
-- Has access to variable `$order` (array, the full order).
+- Has access to `$order` (array, the full order), and optionally `$shopDomain` and `$accessToken` (Shopify store URL and token; use for API calls, e.g. customers/{id}.json).
 - Must assign to `$tags` an array of strings (the tags to apply). Example: `$tags = ['A', '14D-50'];`
-- Do not use <?php at the start (the code will be injected into a script that already has $order and $tags).
-- Do not use exit, echo, or return. Only assign to $tags.
+- Do not use <?php at the start (the code runs inside a script that already has $order, $tags, $shopDomain, $accessToken).
+- You may use return; to exit early; do not use exit or echo.
 
 ## Order structure (reference)
 
