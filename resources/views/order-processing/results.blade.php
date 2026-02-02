@@ -45,6 +45,7 @@
                                     <tr>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Error</th>
                                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Processed at</th>
                                     </tr>
                                 </thead>
@@ -58,6 +59,9 @@
                                                 @else
                                                     <span class="text-red-600 text-sm">Failed</span>
                                                 @endif
+                                            </td>
+                                            <td class="px-4 py-2 text-sm {{ !empty($item['error']) ? 'text-red-600 max-w-md' : 'text-gray-400' }}">
+                                                {{ $item['error'] ?? '—' }}
                                             </td>
                                             <td class="px-4 py-2 text-sm text-gray-500">{{ $item['processed_at'] ?? '—' }}</td>
                                         </tr>

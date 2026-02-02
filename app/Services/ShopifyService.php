@@ -106,6 +106,7 @@ class ShopifyService
         }
 
         $tagsString = implode(', ', $tags);
+        $orderIdForBody = is_numeric($orderId) ? (int) $orderId : $orderId;
 
         try {
             $response = Http::withHeaders([
@@ -113,20 +114,25 @@ class ShopifyService
                 'Content-Type' => 'application/json',
             ])->put($url, [
                 'order' => [
-                    'id' => $orderId,
+                    'id' => $orderIdForBody,
                     'tags' => $tagsString,
                 ],
             ]);
 
             if ($response->failed()) {
-                Log::error("Failed to update order {$orderId} tags: HTTP {$response->status()}");
-                return false;
+                $body = $response->json();
+                $msg = $response->body();
+                if (is_array($body) && isset($body['errors'])) {
+                    $msg = is_string($body['errors']) ? $body['errors'] : json_encode($body['errors']);
+                }
+                Log::error("Failed to update order {$orderId} tags: HTTP {$response->status()} - {$msg}");
+                throw new \Exception("Shopify HTTP {$response->status()}: " . (strlen($msg) > 200 ? substr($msg, 0, 200) . '...' : $msg));
             }
 
             return true;
         } catch (\Exception $e) {
             Log::error("Shopify API Error updating tags: " . $e->getMessage());
-            return false;
+            throw $e;
         }
     }
 

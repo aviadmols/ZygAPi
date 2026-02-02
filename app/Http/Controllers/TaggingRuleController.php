@@ -259,13 +259,49 @@ class TaggingRuleController extends Controller
             $shopifyService = new ShopifyService($store);
             $taggingEngine = new TaggingEngineService();
 
-            $order = $shopifyService->getOrder($validated['order_id']);
+            $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
             $tags = $taggingEngine->extractTags($order, $taggingRule);
 
             return response()->json([
                 'success' => true,
                 'tags' => $tags,
                 'order' => $order,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * API endpoint: given order_id, return the tags this rule would apply.
+     * GET /tagging-rules/{id}/tags?order_id=XXX  or  POST with JSON { "order_id": "XXX" }
+     */
+    public function tags(Request $request, TaggingRule $taggingRule): JsonResponse
+    {
+        $orderId = $request->query('order_id') ?? $request->input('order_id');
+        if (empty($orderId) || !is_string($orderId)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Missing order_id (query param or JSON body).',
+            ], 422);
+        }
+
+        try {
+            $store = $taggingRule->store;
+            $shopifyService = new ShopifyService($store);
+            $taggingEngine = new TaggingEngineService();
+
+            $order = $shopifyService->getOrderByIdOrNumber(trim($orderId));
+            $tags = $taggingEngine->extractTags($order, $taggingRule);
+
+            return response()->json([
+                'rule_id' => $taggingRule->id,
+                'rule_name' => $taggingRule->name,
+                'order_id' => $order['id'] ?? $orderId,
+                'tags' => $tags,
             ]);
         } catch (\Exception $e) {
             return response()->json([

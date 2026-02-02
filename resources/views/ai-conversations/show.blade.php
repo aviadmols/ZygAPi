@@ -97,6 +97,18 @@
                             <a href="{{ route('tagging-rules.edit', $aiConversation->generatedRule) }}" class="text-blue-600 hover:text-blue-800">Edit Rule</a>
                         </div>
                     @endif
+
+                    <!-- Debug log: request/response at each step (easy to debug) -->
+                    <div class="mt-6 pt-6 border-t border-gray-300">
+                        <details class="bg-gray-100 rounded-lg border border-gray-300" id="debug-log-details">
+                            <summary class="px-4 py-3 cursor-pointer font-medium text-gray-700 select-none">Debug log – מה התקבל ומה חזר (לכל שלב)</summary>
+                            <div class="p-4">
+                                <p class="text-xs text-gray-500 mb-2">כל פעולה (Send, Test, Generate Rule) תופיע כאן עם הבקשה והתשובה.</p>
+                                <button type="button" id="debug-log-clear" class="text-xs text-gray-600 hover:text-gray-800 underline mb-2">נקה לוג</button>
+                                <pre id="debug-log" class="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap break-words"></pre>
+                            </div>
+                        </details>
+                    </div>
                 </div>
             </div>
         </div>
@@ -108,13 +120,27 @@
         const messageInput = document.getElementById('message-input');
         const generateRuleForm = document.getElementById('generate-rule-form');
         const orderDataInput = document.getElementById('order-data');
+        const debugLogEl = document.getElementById('debug-log');
+        const debugLogDetails = document.getElementById('debug-log-details');
+
+        function debugLog(label, obj) {
+            if (!debugLogEl) return;
+            const ts = new Date().toLocaleTimeString('he-IL');
+            const line = '[' + ts + '] ' + label + '\n' + (typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2)) + '\n\n';
+            debugLogEl.textContent = (debugLogEl.textContent || '') + line;
+            debugLogEl.scrollTop = debugLogEl.scrollHeight;
+            if (debugLogDetails && !debugLogDetails.open) debugLogDetails.open = true;
+        }
+        document.getElementById('debug-log-clear')?.addEventListener('click', () => { if (debugLogEl) debugLogEl.textContent = ''; });
 
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const message = messageInput.value.trim();
             if (!message) return;
 
-            // Add user message to UI
+            const body = { message: message, order_data: orderDataInput.value || null };
+            debugLog('CHAT – Request (נשלח)', body);
+
             addMessage('user', message);
             messageInput.value = '';
 
@@ -126,19 +152,18 @@
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        order_data: orderDataInput.value || null
-                    })
+                    body: JSON.stringify(body)
                 });
 
                 const data = await response.json();
+                debugLog('CHAT – Response (חזר)', { success: data.success, message_length: data.message ? data.message.length : 0, error: data.error || null });
                 if (data.success) {
                     addMessage('assistant', data.message);
                 } else {
                     alert('Error: ' + data.error);
                 }
             } catch (error) {
+                debugLog('CHAT – Error', error.message);
                 alert('Communication error: ' + error.message);
             }
         });
@@ -158,6 +183,9 @@
                     .join('\n');
                 document.getElementById('user-requirements').value = userMessages;
 
+                const body = { order_data: orderData || null, order_id: orderIdForSample, user_requirements: userMessages };
+                debugLog('GENERATE_RULE – Request (נשלח)', body);
+
                 try {
                     const response = await fetch(`{{ route('ai-conversations.generate-rule', $aiConversation) }}`, {
                         method: 'POST',
@@ -166,21 +194,19 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify({
-                            order_data: orderData || null,
-                            order_id: orderIdForSample,
-                            user_requirements: userMessages
-                        })
+                        body: JSON.stringify(body)
                     });
 
                     const contentType = response.headers.get('content-type');
                     if (!contentType || !contentType.includes('application/json')) {
                         const text = await response.text();
+                        debugLog('GENERATE_RULE – Response (חזר) – לא JSON', 'Status: ' + response.status + '\n' + text.slice(0, 500));
                         alert('Server error (received HTML instead of JSON). Set APP_DEBUG=true on Railway to see details. Status: ' + response.status);
                         return;
                     }
 
                     const data = await response.json();
+                    debugLog('GENERATE_RULE – Response (חזר)', { success: data.success, rule_id: data.rule?.id, rule_name: data.rule?.name, error: data.error || null });
                     if (data.success) {
                         alert('Rule generated successfully! You can edit and test it in Tagging Rules.');
                         window.location.reload();
@@ -188,6 +214,7 @@
                         alert('Error: ' + (data.error || data.message || 'Unknown error'));
                     }
                 } catch (error) {
+                    debugLog('GENERATE_RULE – Error', error.message);
                     alert('Communication error: ' + error.message);
                 }
             });
@@ -211,6 +238,9 @@
                     testOrderResults.classList.remove('hidden');
                     return;
                 }
+                const body = { order_id: orderId, order_data: orderDataInput.value.trim() || null };
+                debugLog('TEST_ORDER – Request (נשלח)', body);
+
                 testOrderResults.innerHTML = '<p class="text-gray-500 text-sm">Running test...</p>';
                 testOrderResults.classList.remove('hidden');
                 try {
@@ -221,12 +251,10 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify({
-                            order_id: orderId,
-                            order_data: orderDataInput.value.trim() || null
-                        })
+                        body: JSON.stringify(body)
                     });
                     const data = await response.json();
+                    debugLog('TEST_ORDER – Response (חזר)', { success: data.success, tags: data.tags || [], tags_count: (data.tags || []).length, php_code_length: data.php_code ? data.php_code.length : 0, error: data.error || null });
                     if (data.success) {
                         const tags = data.tags || [];
                         let html = '<p class="text-sm font-medium text-gray-700 mb-2">Tags that would be applied:</p>';
@@ -243,6 +271,7 @@
                         testOrderResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">' + (data.error || 'Error') + '</div>';
                     }
                 } catch (err) {
+                    debugLog('TEST_ORDER – Error', err.message);
                     testOrderResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + err.message + '</div>';
                 }
             });

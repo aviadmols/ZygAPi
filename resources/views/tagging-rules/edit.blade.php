@@ -41,30 +41,34 @@
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('description', $taggingRule->description) }}</textarea>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="rules_json" class="block text-sm font-medium text-gray-700">Rules JSON (optional)</label>
-                            <p class="mt-1 text-xs text-gray-500 mb-1">Paste or edit the rules JSON (conditions, tags, tags_template).</p>
-                            <textarea name="rules_json" id="rules_json" rows="8"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('rules_json', is_array($taggingRule->rules_json) ? json_encode($taggingRule->rules_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : (is_string($taggingRule->rules_json) ? $taggingRule->rules_json : '')) }}</textarea>
-                            @error('rules_json')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="tags_template" class="block text-sm font-medium text-gray-700">Tags Template</label>
-                            <textarea name="tags_template" id="tags_template" rows="5"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('tags_template', $taggingRule->tags_template) }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500">Tag template with expressions. Use switch, get, split inside double curly braces.</p>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="php_rule" class="block text-sm font-medium text-gray-700">PHP Rule (optional)</label>
-                            <textarea name="php_rule" id="php_rule" rows="12"
+                        <!-- PHP Rule = main field that determines this rule -->
+                        <div class="mb-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                            <label for="php_rule" class="block text-sm font-semibold text-gray-800">PHP Rule – this code defines the rule</label>
+                            <p class="mt-1 text-xs text-gray-600 mb-2">The system runs this PHP for each order. Use <code>$order</code> (the order array) and set <code>$tags</code> (array of strings). When this field has content, it is used; JSON and template below are ignored.</p>
+                            <textarea name="php_rule" id="php_rule" rows="14"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
-                                placeholder="PHP code that sets $tags from $order. If set, this overrides Rules JSON + Tags Template.">{{ old('php_rule', $taggingRule->php_rule) }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500">Variable <code>$order</code> is the Shopify order array. Assign to <code>$tags</code> (array of strings).</p>
+                                placeholder="$tags = [];&#10;if (!empty($order['line_items'][0]['properties'])) { ... }">{{ old('php_rule', $taggingRule->php_rule) }}</textarea>
                         </div>
+
+                        <!-- Optional: JSON + template (used only when PHP Rule is empty) -->
+                        <details class="mb-4 border border-gray-200 rounded-lg">
+                            <summary class="px-4 py-3 bg-gray-50 rounded-lg cursor-pointer text-sm font-medium text-gray-600">Optional: Rules JSON & Tags Template (used only when PHP Rule is empty)</summary>
+                            <div class="p-4 space-y-4">
+                                <div>
+                                    <label for="rules_json" class="block text-sm font-medium text-gray-700">Rules JSON</label>
+                                    <textarea name="rules_json" id="rules_json" rows="6"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('rules_json', is_array($taggingRule->rules_json) ? json_encode($taggingRule->rules_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : (is_string($taggingRule->rules_json) ? $taggingRule->rules_json : '')) }}</textarea>
+                                    @error('rules_json')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                <div>
+                                    <label for="tags_template" class="block text-sm font-medium text-gray-700">Tags Template</label>
+                                    <textarea name="tags_template" id="tags_template" rows="4"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('tags_template', $taggingRule->tags_template) }}</textarea>
+                                </div>
+                            </div>
+                        </details>
 
                         <div class="mb-4">
                             <label class="flex items-center">

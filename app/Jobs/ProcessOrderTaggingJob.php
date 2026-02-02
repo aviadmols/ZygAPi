@@ -73,21 +73,19 @@ class ProcessOrderTaggingJob implements ShouldQueue
             // Process order with specific rule
             $success = $taggingEngine->processOrder($order, $rule, $shopifyService);
 
-            // Update processing job progress if exists
             if ($this->processingJobId) {
-                $this->updateProgress($success);
+                $this->updateProgress($success, $success ? null : 'Shopify API did not accept the tag update');
             }
 
             if (!$success) {
-                throw new \Exception("Failed to process order {$this->orderId}");
+                throw new \Exception("Shopify API did not accept the tag update for order {$this->orderId}");
             }
 
         } catch (\Exception $e) {
             Log::error("Error processing order {$this->orderId}: " . $e->getMessage());
 
-            // Update processing job progress if exists
             if ($this->processingJobId) {
-                $this->updateProgress(false);
+                $this->updateProgress(false, $e->getMessage());
             }
 
             throw $e;
@@ -97,7 +95,7 @@ class ProcessOrderTaggingJob implements ShouldQueue
     /**
      * Update processing job progress
      */
-    protected function updateProgress(bool $success): void
+    protected function updateProgress(bool $success, ?string $errorMessage = null): void
     {
         if (!$this->processingJobId) {
             return;
@@ -111,11 +109,15 @@ class ProcessOrderTaggingJob implements ShouldQueue
         $processingJob->increment($success ? 'processed_orders' : 'failed_orders');
 
         $progress = $processingJob->progress ?? [];
-        $progress[] = [
+        $item = [
             'order_id' => $this->orderId,
             'success' => $success,
             'processed_at' => now()->toDateTimeString(),
         ];
+        if (!$success && $errorMessage !== null) {
+            $item['error'] = $errorMessage;
+        }
+        $progress[] = $item;
         $processingJob->progress = $progress;
         $processingJob->save();
     }

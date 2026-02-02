@@ -24,6 +24,8 @@ Route::middleware('auth')->group(function () {
     Route::post('tagging-rules/preview', [\App\Http\Controllers\TaggingRuleController::class, 'preview'])->name('tagging-rules.preview');
     Route::post('tagging-rules/generate-php', [\App\Http\Controllers\TaggingRuleController::class, 'generatePhp'])->name('tagging-rules.generate-php');
     Route::post('tagging-rules/{tagging_rule}/test', [\App\Http\Controllers\TaggingRuleController::class, 'test'])->name('tagging-rules.test');
+    Route::get('tagging-rules/{tagging_rule}/tags', [\App\Http\Controllers\TaggingRuleController::class, 'tags'])->name('tagging-rules.tags');
+    Route::post('tagging-rules/{tagging_rule}/tags', [\App\Http\Controllers\TaggingRuleController::class, 'tags'])->name('tagging-rules.tags.post');
     Route::get('tagging-rules', [\App\Http\Controllers\TaggingRuleController::class, 'index'])->name('tagging-rules.index');
 
     // Order Processing
