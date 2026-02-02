@@ -8,7 +8,17 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $activeRules = \App\Models\TaggingRule::with('store')
+        ->where('is_active', true)
+        ->latest()
+        ->get();
+    
+    $recentLogs = \App\Models\TaggingRuleLog::with('taggingRule')
+        ->latest()
+        ->limit(10)
+        ->get();
+    
+    return view('dashboard', compact('activeRules', 'recentLogs'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
