@@ -94,6 +94,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify({
@@ -134,6 +135,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
                         body: JSON.stringify({
@@ -142,12 +144,19 @@
                         })
                     });
 
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        alert('Server error (received HTML instead of JSON). Set APP_DEBUG=true on Railway to see details. Status: ' + response.status);
+                        return;
+                    }
+
                     const data = await response.json();
                     if (data.success) {
                         alert('Rule generated successfully!');
                         window.location.reload();
                     } else {
-                        alert('Error: ' + data.error);
+                        alert('Error: ' + (data.error || data.message || 'Unknown error'));
                     }
                 } catch (error) {
                     alert('Communication error: ' + error.message);

@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Zyg AutoTag'),
+    'name' => env('APP_NAME', 'Zyg Automations'),
 
     /*
     |--------------------------------------------------------------------------

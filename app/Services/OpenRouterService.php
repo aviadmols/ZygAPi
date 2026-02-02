@@ -33,7 +33,7 @@ class OpenRouterService
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
                 'HTTP-Referer' => config('app.url'),
-                'X-Title' => 'Zyg AutoTag',
+                'X-Title' => 'Zyg Automations',
             ])->post("{$this->baseUrl}/chat/completions", [
                 'model' => $model,
                 'messages' => $messages,

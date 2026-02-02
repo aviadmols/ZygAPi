@@ -12,7 +12,7 @@ class PromptTemplateSeeder extends Seeder
      * References Shopify + Recharge order structure and the tagging engine.
      */
     public const DEFAULT_TAGGING_PROMPT = <<<'PROMPT'
-You are an expert at creating Shopify order tagging rules for Zyg AutoTag.
+You are an expert at creating Shopify order tagging rules for Zyg Automations.
 
 ## Context: Integrations
 

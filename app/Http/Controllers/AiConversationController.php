@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 
 class AiConversationController extends Controller
 {
@@ -127,17 +128,32 @@ class AiConversationController extends Controller
     }
 
     /**
-     * Generate rule from conversation
+     * Generate rule from conversation.
+     * Always returns JSON so the client never gets HTML (e.g. 500 page).
      */
     public function generateRule(Request $request, AiConversation $aiConversation): JsonResponse
     {
-        $validated = $request->validate([
-            'order_data' => 'required|json',
-            'user_requirements' => 'required|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'order_data' => 'required|string',
+                'user_requirements' => 'required|string',
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Validation failed: ' . implode(' ', $e->validator->errors()->all()),
+            ], 422);
+        }
+
+        $orderData = json_decode($validated['order_data'], true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Invalid JSON in order_data.',
+            ], 422);
+        }
 
         try {
-            $orderData = json_decode($validated['order_data'], true);
             $userRequirements = $validated['user_requirements'];
 
             // Generate rule using AI
@@ -163,7 +179,7 @@ class AiConversationController extends Controller
                 'rule' => $rule,
                 'message' => 'Rule generated successfully',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),

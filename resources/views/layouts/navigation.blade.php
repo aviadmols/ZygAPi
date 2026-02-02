@@ -6,7 +6,7 @@
                 <!-- App Name -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="font-semibold text-xl text-gray-800">
-                        {{ config('app.name', 'Zyg AutoTag') }}
+                        {{ config('app.name', 'Zyg Automations') }}
                     </a>
                 </div>
 

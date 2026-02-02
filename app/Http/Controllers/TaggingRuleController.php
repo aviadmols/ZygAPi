@@ -7,6 +7,7 @@ use App\Models\TaggingRule;
 use App\Services\ShopifyService;
 use App\Services\TaggingEngineService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -37,10 +38,22 @@ class TaggingRuleController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create(): View
+    public function create(): View|\Illuminate\Http\Response
     {
-        $stores = Store::where('is_active', true)->get();
-        return view('tagging-rules.create', compact('stores'));
+        try {
+            $stores = Store::where('is_active', true)->orderBy('name')->get();
+        } catch (\Throwable $e) {
+            Log::error('TaggingRuleController::create - could not load stores: ' . $e->getMessage());
+            $stores = collect();
+        }
+
+        try {
+            return view('tagging-rules.create', compact('stores'));
+        } catch (\Throwable $e) {
+            Log::error('TaggingRuleController::create view error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $msg = config('app.debug') ? '<h1>Error loading create form</h1><pre>' . htmlspecialchars($e->getMessage()) . '</pre><pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>' : '<h1>Something went wrong</h1><p>Set APP_DEBUG=true on Railway to see details, or run: php artisan migrate</p>';
+            return response('<html><body>' . $msg . '</body></html>', 500, ['Content-Type' => 'text/html; charset=utf-8']);
+        }
     }
 
     /**
@@ -52,11 +65,16 @@ class TaggingRuleController extends Controller
             'store_id' => 'required|exists:stores,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'rules_json' => 'nullable|json',
+            'rules_json' => 'nullable|string',
             'tags_template' => 'nullable|string',
             'is_active' => 'boolean',
             'overwrite_existing_tags' => 'boolean',
         ]);
+
+        if (!empty($validated['rules_json'])) {
+            $decoded = json_decode($validated['rules_json'], true);
+            $validated['rules_json'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+        }
 
         TaggingRule::create($validated);
 
@@ -77,7 +95,13 @@ class TaggingRuleController extends Controller
      */
     public function edit(TaggingRule $taggingRule): View
     {
-        $stores = Store::where('is_active', true)->get();
+        try {
+            $stores = Store::where('is_active', true)->orderBy('name')->get();
+        } catch (\Throwable $e) {
+            Log::error('TaggingRuleController::edit - could not load stores: ' . $e->getMessage());
+            $stores = collect();
+        }
+
         return view('tagging-rules.edit', compact('taggingRule', 'stores'));
     }
 
@@ -90,11 +114,16 @@ class TaggingRuleController extends Controller
             'store_id' => 'required|exists:stores,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'rules_json' => 'nullable|json',
+            'rules_json' => 'nullable|string',
             'tags_template' => 'nullable|string',
             'is_active' => 'boolean',
             'overwrite_existing_tags' => 'boolean',
         ]);
+
+        if (!empty($validated['rules_json'])) {
+            $decoded = json_decode($validated['rules_json'], true);
+            $validated['rules_json'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+        }
 
         $taggingRule->update($validated);
 

@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Zyg AutoTag') }}</title>
+        <title>{{ config('app.name', 'Zyg Automations') }}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             [dir="rtl"] {
@@ -17,8 +17,11 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Scripts (fallback when Vite manifest missing e.g. build not run on deploy) -->
-        @if(file_exists(public_path('build/manifest.json')))
+        <!-- Scripts (production: use CDN to avoid 500 from Vite/manifest; local: use Vite) -->
+        @if(app()->environment('production'))
+            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
+            <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        @elseif(file_exists(public_path('build/manifest.json')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @else
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">

@@ -1,7 +1,7 @@
 {
     "name": "zyg/automations",
     "type": "project",
-    "description": "Zyg AutoTag - Shopify Tags Management",
+    "description": "Zyg Automations - Shopify Tags Management",
     "keywords": ["zyg", "automations", "shopify"],
     "license": "MIT",
     "require": {
