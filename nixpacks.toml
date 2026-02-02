@@ -1,0 +1,9 @@
+# Ensure Vite assets are built so public/build/manifest.json exists (avoids 500 on pages using @vite)
+[phases.setup]
+nixPkgs = ["nodejs_20", "php82", "composer"]
+
+[phases.install]
+cmds = ["composer install --optimize-autoloader --no-dev", "npm install", "npm run build"]
+
+[variables]
+NIXPACKS_NO_INSTALL = "0"
