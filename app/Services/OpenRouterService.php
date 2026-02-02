@@ -18,11 +18,13 @@ class OpenRouterService
     /**
      * Send chat message to OpenRouter AI
      */
-    public function chat(array $messages, string $model = 'anthropic/claude-opus-4.5'): array
+    public function chat(array $messages, ?string $model = null): array
     {
         if (!$this->apiKey) {
             throw new \Exception('OpenRouter API key not configured');
         }
+
+        $model = $model ?? config('openrouter.default_model', 'anthropic/claude-3.5-sonnet');
 
         try {
             $response = Http::withHeaders([
