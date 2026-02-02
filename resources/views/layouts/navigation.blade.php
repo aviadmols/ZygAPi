@@ -21,6 +21,9 @@
                     <x-nav-link :href="route('tagging-rules.index')" :active="request()->routeIs('tagging-rules.*')">
                         {{ __('Tagging Rules') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('tagging-rule-logs.index')" :active="request()->routeIs('tagging-rule-logs.*')">
+                        {{ __('Webhook Logs') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('orders.process.index')" :active="request()->routeIs('orders.*')">
                         {{ __('Order Processing') }}
                     </x-nav-link>
@@ -93,6 +96,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('tagging-rules.index')" :active="request()->routeIs('tagging-rules.*')">
                 {{ __('Tagging Rules') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('tagging-rule-logs.index')" :active="request()->routeIs('tagging-rule-logs.*')">
+                {{ __('Webhook Logs') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('orders.process.index')" :active="request()->routeIs('orders.*')">
                 {{ __('Order Processing') }}

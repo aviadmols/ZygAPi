@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Models\TaggingRule;
+use App\Models\TaggingRuleLog;
 use App\Services\OpenRouterService;
 use App\Services\ShopifyService;
 use App\Services\TaggingEngineService;
@@ -73,6 +74,7 @@ class TaggingRuleController extends Controller
             'rules_json' => 'nullable|string',
             'tags_template' => 'nullable|string',
             'php_rule' => 'nullable|string',
+            'webhook_token' => 'nullable|string|max:64',
             'is_active' => 'boolean',
             'overwrite_existing_tags' => 'boolean',
         ]);
@@ -80,6 +82,9 @@ class TaggingRuleController extends Controller
         if (!empty($validated['rules_json'])) {
             $decoded = json_decode($validated['rules_json'], true);
             $validated['rules_json'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+        }
+        if (array_key_exists('webhook_token', $validated) && $validated['webhook_token'] === '') {
+            $validated['webhook_token'] = null;
         }
 
         TaggingRule::create($validated);
@@ -129,6 +134,7 @@ class TaggingRuleController extends Controller
             'rules_json' => 'nullable|string',
             'tags_template' => 'nullable|string',
             'php_rule' => 'nullable|string',
+            'webhook_token' => 'nullable|string|max:64',
             'is_active' => 'boolean',
             'overwrite_existing_tags' => 'boolean',
         ]);
@@ -136,6 +142,9 @@ class TaggingRuleController extends Controller
         if (!empty($validated['rules_json'])) {
             $decoded = json_decode($validated['rules_json'], true);
             $validated['rules_json'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+        }
+        if (array_key_exists('webhook_token', $validated) && $validated['webhook_token'] === '') {
+            $validated['webhook_token'] = null;
         }
 
         $taggingRule->update($validated);
@@ -306,6 +315,95 @@ class TaggingRuleController extends Controller
                 'tags' => $tags,
             ]);
         } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Apply rule to an order (update tags in Shopify). Used as webhook or from dashboard.
+     * Auth: logged-in user, or X-Webhook-Token / ?token matching rule's webhook_token.
+     */
+    public function apply(Request $request, TaggingRule $taggingRule): JsonResponse
+    {
+        $orderId = $request->query('order_id') ?? $request->input('order_id');
+        if (empty($orderId) || !is_string($orderId)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Missing order_id (query param or JSON body).',
+            ], 422);
+        }
+        $orderId = trim($orderId);
+
+        $token = $request->header('X-Webhook-Token') ?? $request->query('token') ?? $request->input('token');
+        $isWebhook = !auth()->check() && $token !== null;
+        if (!auth()->check()) {
+            if (empty($taggingRule->webhook_token)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Webhook token not set for this rule. Set it in Edit Rule and use X-Webhook-Token header or ?token=.',
+                ], 401);
+            }
+            if (!hash_equals((string) $taggingRule->webhook_token, (string) $token)) {
+                return response()->json(['success' => false, 'error' => 'Invalid webhook token.'], 401);
+            }
+        }
+
+        $source = $isWebhook ? 'webhook' : (auth()->check() ? 'dashboard' : 'api');
+
+        try {
+            $taggingRule->load('store');
+            $store = $taggingRule->store;
+            $shopifyService = new ShopifyService($store);
+            $taggingEngine = new TaggingEngineService();
+
+            $order = $shopifyService->getOrderByIdOrNumber($orderId);
+            $orderNumber = $order['order_number'] ?? $order['name'] ?? null;
+
+            $tags = $taggingEngine->extractTags($order, $taggingRule);
+            $success = true;
+            $errorMessage = null;
+
+            if (!empty($tags)) {
+                $success = $shopifyService->updateOrderTags(
+                    (string) ($order['id'] ?? $orderId),
+                    $tags,
+                    $taggingRule->overwrite_existing_tags
+                );
+                if (!$success) {
+                    $errorMessage = 'Shopify API did not accept the tag update.';
+                }
+            }
+
+            TaggingRuleLog::create([
+                'tagging_rule_id' => $taggingRule->id,
+                'order_id' => (string) ($order['id'] ?? $orderId),
+                'order_number' => $orderNumber ? (string) $orderNumber : null,
+                'tags_applied' => $tags,
+                'success' => $success,
+                'error_message' => $errorMessage,
+                'source' => $source,
+            ]);
+
+            return response()->json([
+                'success' => $success,
+                'order_id' => $order['id'] ?? $orderId,
+                'order_number' => $orderNumber,
+                'tags' => $tags,
+                'error' => $errorMessage,
+            ], $success ? 200 : 500);
+        } catch (\Exception $e) {
+            TaggingRuleLog::create([
+                'tagging_rule_id' => $taggingRule->id,
+                'order_id' => $orderId,
+                'order_number' => null,
+                'tags_applied' => null,
+                'success' => false,
+                'error_message' => $e->getMessage(),
+                'source' => $source,
+            ]);
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),

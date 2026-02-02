@@ -70,6 +70,19 @@
                             </div>
                         </details>
 
+                        <!-- Webhook: apply endpoint + token -->
+                        <div class="mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                            <h4 class="text-sm font-semibold text-gray-800 mb-2">Webhook – apply tagging by order ID</h4>
+                            <p class="text-xs text-gray-600 mb-2">Send order_id to this URL to run this rule and update tags in Shopify. Use from external systems (e.g. Shopify Flow) with the token below.</p>
+                            <p class="text-xs font-mono bg-white border border-gray-200 rounded px-2 py-2 mb-2 break-all">{{ url('webhooks/tagging-rule/' . $taggingRule->id . '/apply') }}</p>
+                            <p class="text-xs text-gray-500 mb-2">Method: POST. Body: <code>{"order_id": "123"}</code> or <code>?order_id=123</code>. Auth: set header <code>X-Webhook-Token</code> (or <code>?token=</code>) to the value below.</p>
+                            <label for="webhook_token" class="block text-sm font-medium text-gray-700 mb-1">Webhook token (optional; if set, required for unauthenticated calls)</label>
+                            <input type="text" name="webhook_token" id="webhook_token" value="{{ old('webhook_token', $taggingRule->webhook_token) }}" maxlength="64"
+                                class="mt-1 block w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
+                                placeholder="e.g. my-secret-token">
+                            <p class="mt-1 text-xs text-gray-500">Leave empty to allow only logged-in users to call the endpoint.</p>
+                        </div>
+
                         <div class="mb-4">
                             <label class="flex items-center">
                                 <input type="checkbox" name="is_active" value="1" {{ old('is_active', $taggingRule->is_active) ? 'checked' : '' }}

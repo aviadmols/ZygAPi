@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::get('tagging-rules/{tagging_rule}/tags', [\App\Http\Controllers\TaggingRuleController::class, 'tags'])->name('tagging-rules.tags');
     Route::post('tagging-rules/{tagging_rule}/tags', [\App\Http\Controllers\TaggingRuleController::class, 'tags'])->name('tagging-rules.tags.post');
     Route::get('tagging-rules', [\App\Http\Controllers\TaggingRuleController::class, 'index'])->name('tagging-rules.index');
+    Route::get('tagging-rule-logs', [\App\Http\Controllers\TaggingRuleLogController::class, 'index'])->name('tagging-rule-logs.index');
 
     // Order Processing
     Route::get('orders/process', [\App\Http\Controllers\OrderProcessingController::class, 'index'])->name('orders.process.index');
@@ -52,5 +53,8 @@ Route::middleware('auth')->group(function () {
 
 // Webhooks (without auth - with HMAC verification)
 Route::post('webhooks/shopify/order-created', [\App\Http\Controllers\WebhookController::class, 'handleOrderCreated'])->name('webhooks.shopify.order-created');
+
+// Tagging rule apply: run rule on order and update Shopify tags. Auth: session OR X-Webhook-Token / ?token
+Route::post('webhooks/tagging-rule/{tagging_rule}/apply', [\App\Http\Controllers\TaggingRuleController::class, 'apply'])->name('webhooks.tagging-rule.apply');
 
 require __DIR__.'/auth.php';

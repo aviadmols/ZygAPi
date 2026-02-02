@@ -17,6 +17,7 @@ class TaggingRule extends Model
         'php_rule',
         'is_active',
         'overwrite_existing_tags',
+        'webhook_token',
     ];
 
     protected $casts = [
@@ -33,5 +34,10 @@ class TaggingRule extends Model
     public function orderProcessingJobs(): HasMany
     {
         return $this->hasMany(OrderProcessingJob::class, 'rule_id');
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(TaggingRuleLog::class);
     }
 }

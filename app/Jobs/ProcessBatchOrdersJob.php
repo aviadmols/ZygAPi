@@ -12,7 +12,7 @@ class ProcessBatchOrdersJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 1;
-    public int $timeout = 300;
+    public int $timeout = 900; // 15 min for very large batches (e.g. 10,000+ order IDs)
 
     /**
      * Create a new job instance.
@@ -43,14 +43,17 @@ class ProcessBatchOrdersJob implements ShouldQueue
         $processingJob->total_orders = $totalOrders;
         $processingJob->save();
 
-        // Dispatch individual order processing jobs
-        foreach ($orderIds as $orderId) {
-            ProcessOrderTaggingJob::dispatch(
-                $processingJob->store_id,
-                $orderId,
-                $processingJob->rule_id,
-                $this->processingJobId
-            )->onQueue('order-processing');
+        // Dispatch individual order processing jobs (in chunks for very large batches)
+        $chunkSize = 500;
+        foreach (array_chunk($orderIds, $chunkSize) as $chunk) {
+            foreach ($chunk as $orderId) {
+                ProcessOrderTaggingJob::dispatch(
+                    $processingJob->store_id,
+                    $orderId,
+                    $processingJob->rule_id,
+                    $this->processingJobId
+                )->onQueue('order-processing');
+            }
         }
 
         // Note: We don't mark as completed here - individual jobs will update progress

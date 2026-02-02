@@ -11,6 +11,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-semibold mb-4">New Order Processing</h3>
+                    <p class="text-sm text-gray-600 mb-4">Supports large batches (e.g. 10,000+ orders). Jobs are queued and processed in the background. Processing time depends on queue workers and Shopify API rate limits. For very large batches, consider running during off-peak hours.</p>
                     <form id="process-orders-form">
                         @csrf
                         <div class="mb-4">
@@ -33,10 +34,11 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="order_ids" class="block text-sm font-medium text-gray-700">Order IDs (comma-separated)</label>
-                            <textarea name="order_ids" id="order_ids" rows="5" required
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                placeholder="123456789, 987654321, 456789123"></textarea>
+                            <label for="order_ids" class="block text-sm font-medium text-gray-700">Order IDs (comma- or newline-separated)</label>
+                            <textarea name="order_ids" id="order_ids" rows="8" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
+                                placeholder="123456789, 987654321&#10;or one per line for large batches"></textarea>
+                            <p class="mt-1 text-xs text-gray-500">Paste order IDs or numbers. Comma or newline separated. Large batches (10,000+) are processed in the queue.</p>
                         </div>
 
                         <div class="mb-4">

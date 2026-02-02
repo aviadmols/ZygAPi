@@ -5,10 +5,13 @@ namespace App\Services;
 use App\Models\Store;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class ShopifyService
 {
     protected Store $store;
+
+    /** Shopify REST API: standard 2 req/s; Advanced 4; Plus 20. Throttle per store. */
 
     public function __construct(Store $store)
     {
@@ -16,10 +19,30 @@ class ShopifyService
     }
 
     /**
+     * Wait until we are under Shopify rate limit (2 req/sec per store).
+     * Ensures we never exceed Shopify's limit regardless of how many jobs run in parallel.
+     */
+    protected function waitForShopifyRateLimit(): void
+    {
+        $key = 'shopify_api:store:' . $this->store->id;
+        $maxPerSecond = (int) config('shopify.rate_limit.requests_per_second', 2);
+        $maxPerSecond = max(1, min($maxPerSecond, 40)); // clamp 1–40
+
+        while (true) {
+            if (RateLimiter::attempt($key, $maxPerSecond, fn () => true, 1)) {
+                return;
+            }
+            usleep(500000); // 0.5 sec then retry
+        }
+    }
+
+    /**
      * Get order from Shopify
      */
     public function getOrder(string $orderId): array
     {
+        $this->waitForShopifyRateLimit();
+
         $url = "https://{$this->store->shopify_store_url}/admin/api/2024-10/orders/{$orderId}.json";
 
         try {
@@ -57,6 +80,8 @@ class ShopifyService
      */
     public function getOrderByOrderNumber(string $orderNumber): array
     {
+        $this->waitForShopifyRateLimit();
+
         $url = "https://{$this->store->shopify_store_url}/admin/api/2024-10/orders.json?name=" . urlencode($orderNumber) . "&limit=1";
 
         $response = Http::withHeaders([
@@ -108,6 +133,8 @@ class ShopifyService
         $tagsString = implode(', ', $tags);
         $orderIdForBody = is_numeric($orderId) ? (int) $orderId : $orderId;
 
+        $this->waitForShopifyRateLimit();
+
         try {
             $response = Http::withHeaders([
                 'X-Shopify-Access-Token' => $this->store->shopify_access_token,
@@ -146,6 +173,7 @@ class ShopifyService
 
         do {
             try {
+                $this->waitForShopifyRateLimit();
                 $response = Http::withHeaders([
                     'X-Shopify-Access-Token' => $this->store->shopify_access_token,
                     'Content-Type' => 'application/json',

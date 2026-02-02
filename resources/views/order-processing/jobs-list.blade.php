@@ -1,42 +1,29 @@
+@php
+    $jobsList = $jobs->items();
+    $latestJob = $jobsList[0] ?? null;
+    $olderJobs = array_slice($jobsList, 1);
+@endphp
+
 <div class="space-y-4">
-    @forelse($jobs as $job)
-        <div data-job-id="{{ $job->id }}" class="border border-gray-200 rounded-lg p-4">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h4 class="font-semibold">Job #{{ $job->id }}</h4>
-                    <p class="text-sm text-gray-600">Store: {{ $job->store->name }}</p>
-                    @if($job->rule)
-                        <p class="text-sm text-gray-600">Rule: {{ $job->rule->name }}</p>
-                    @endif
-                </div>
-                <span class="px-2 py-1 text-xs rounded-full {{ $job->status === 'completed' ? 'bg-green-100 text-green-800' : ($job->status === 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') }}">
-                    {{ $job->status === 'completed' ? 'Completed' : ($job->status === 'failed' ? 'Failed' : ($job->status === 'processing' ? 'Processing' : 'Pending')) }}
-                </span>
-            </div>
+    @if($latestJob)
+        {{-- Show only the latest (most recent) job by default --}}
+        @include('order-processing.job-card', ['job' => $latestJob])
 
-            <div class="mb-2">
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="progress-text">{{ $job->processed_orders }}/{{ $job->total_orders }} ({{ $job->total_orders > 0 ? round(($job->processed_orders + $job->failed_orders) / $job->total_orders * 100, 2) : 0 }}%)</span>
-                    <span>Failed: {{ $job->failed_orders }}</span>
+        @if(count($olderJobs) > 0)
+            <details class="group mt-4" id="more-jobs-details">
+                <summary class="cursor-pointer list-none flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 py-2">
+                    More ({{ count($olderJobs) }} {{ count($olderJobs) === 1 ? 'job' : 'jobs' }})
+                </summary>
+                <div class="space-y-4 mt-2 pl-4 border-l-2 border-gray-200">
+                    @foreach($olderJobs as $job)
+                        @include('order-processing.job-card', ['job' => $job])
+                    @endforeach
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="progress-bar bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                         style="width: {{ $job->total_orders > 0 ? round(($job->processed_orders + $job->failed_orders) / $job->total_orders * 100, 2) : 0 }}%"></div>
-                </div>
-            </div>
-
-            @if($job->started_at)
-                <p class="text-xs text-gray-500">Started: {{ $job->started_at->format('Y-m-d H:i:s') }}</p>
-            @endif
-            @if($job->completed_at)
-                <p class="text-xs text-gray-500">Completed: {{ $job->completed_at->format('Y-m-d H:i:s') }}</p>
-            @endif
-
-            <a href="{{ route('orders.results', $job) }}" class="text-blue-600 hover:text-blue-800 text-sm">View Results</a>
-        </div>
-    @empty
+            </details>
+        @endif
+    @else
         <p class="text-gray-500 text-center py-8">No processing jobs</p>
-    @endforelse
+    @endif
 
     {{ $jobs->links() }}
 </div>
