@@ -14,6 +14,7 @@ class TaggingRule extends Model
         'description',
         'rules_json',
         'tags_template',
+        'php_rule',
         'is_active',
         'overwrite_existing_tags',
     ];

@@ -70,6 +70,60 @@ Example tags_template:
 Return only the JSON object.
 PROMPT;
 
+    /**
+     * Default system prompt for AI when generating PHP tagging rule.
+     * Output: only PHP code that assigns to $tags (array of strings).
+     */
+    public const DEFAULT_PHP_RULE_PROMPT = <<<'PROMPT'
+You are an expert at writing PHP code for Shopify order tagging in Zyg Automations.
+
+## Context
+
+You receive:
+1. A sample Shopify order (JSON). Structure: id, order_number, line_items[] (title, sku, quantity, properties[] with name/value), customer (email, first_name, last_name), note_attributes[], tags, etc. Recharge/subscription properties may appear in line_items[].properties (e.g. Days, Gram, shipping_interval_frequency).
+2. The user's requirements: what to check and which tags to return.
+
+## Your task
+
+Generate **only** PHP code (no markdown, no explanation) that:
+- Has access to variable `$order` (array, the full order).
+- Must assign to `$tags` an array of strings (the tags to apply). Example: `$tags = ['A', '14D-50'];`
+- Do not use <?php at the start (the code will be injected into a script that already has $order and $tags).
+- Do not use exit, echo, or return. Only assign to $tags.
+
+## Order structure (reference)
+
+- $order['line_items'][$i]['title'], ['sku'], ['quantity'], ['properties'] (array of name/value)
+- Line item property by name: loop $order['line_items'][$i]['properties'] and match 'name' to get 'value' (e.g. Days, Gram).
+- $order['customer']['email'], ['first_name'], ['last_name']
+- $order['order_number'], ['note'], ['tags'], ['note_attributes']
+
+## Example
+
+User says: "If first line item has property Days=14 and Gram=50, add tag A; otherwise add tag B."
+
+Code:
+$tags = [];
+if (!empty($order['line_items'][0]['properties'])) {
+    $days = $gram = null;
+    foreach ($order['line_items'][0]['properties'] as $p) {
+        if (isset($p['name']) && isset($p['value'])) {
+            if ($p['name'] === 'Days') $days = $p['value'];
+            if ($p['name'] === 'Gram') $gram = $p['value'];
+        }
+    }
+    if ($days === '14' && $gram === '50') {
+        $tags[] = 'A';
+    } else {
+        $tags[] = 'B';
+    }
+} else {
+    $tags[] = 'B';
+}
+
+Output only the PHP code, nothing else.
+PROMPT;
+
     public function run(): void
     {
         PromptTemplate::updateOrCreate(
@@ -78,6 +132,15 @@ PROMPT;
                 'name' => 'Tagging Rule Generation',
                 'content' => self::DEFAULT_TAGGING_PROMPT,
                 'description' => 'System prompt for AI when generating order tagging rules. Uses Shopify order + Recharge context and outputs JSON (conditions, tags, tags_template) that the engine runs to tag orders.',
+            ]
+        );
+
+        PromptTemplate::updateOrCreate(
+            ['slug' => 'php_rule_generation'],
+            [
+                'name' => 'PHP Rule Generation',
+                'content' => self::DEFAULT_PHP_RULE_PROMPT,
+                'description' => 'System prompt for AI when generating PHP code that computes order tags from $order. Output is PHP only (assign to $tags).',
             ]
         );
     }

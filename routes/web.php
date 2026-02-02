@@ -22,6 +22,7 @@ Route::middleware('auth')->group(function () {
     // Tagging Rules
     Route::resource('tagging-rules', \App\Http\Controllers\TaggingRuleController::class);
     Route::post('tagging-rules/preview', [\App\Http\Controllers\TaggingRuleController::class, 'preview'])->name('tagging-rules.preview');
+    Route::post('tagging-rules/generate-php', [\App\Http\Controllers\TaggingRuleController::class, 'generatePhp'])->name('tagging-rules.generate-php');
     Route::post('tagging-rules/{tagging_rule}/test', [\App\Http\Controllers\TaggingRuleController::class, 'test'])->name('tagging-rules.test');
     Route::get('tagging-rules', [\App\Http\Controllers\TaggingRuleController::class, 'index'])->name('tagging-rules.index');
 

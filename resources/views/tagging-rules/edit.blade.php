@@ -59,6 +59,14 @@
                         </div>
 
                         <div class="mb-4">
+                            <label for="php_rule" class="block text-sm font-medium text-gray-700">PHP Rule (optional)</label>
+                            <textarea name="php_rule" id="php_rule" rows="12"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
+                                placeholder="PHP code that sets $tags from $order. If set, this overrides Rules JSON + Tags Template.">{{ old('php_rule', $taggingRule->php_rule) }}</textarea>
+                            <p class="mt-1 text-xs text-gray-500">Variable <code>$order</code> is the Shopify order array. Assign to <code>$tags</code> (array of strings).</p>
+                        </div>
+
+                        <div class="mb-4">
                             <label class="flex items-center">
                                 <input type="checkbox" name="is_active" value="1" {{ old('is_active', $taggingRule->is_active) ? 'checked' : '' }}
                                     class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">

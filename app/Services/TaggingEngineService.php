@@ -201,10 +201,15 @@ class TaggingEngineService
     }
 
     /**
-     * Extract tags from order based on rule
+     * Extract tags from order based on rule.
+     * If php_rule is set, run it and return its result; otherwise use JSON/template logic.
      */
     public function extractTags(array $order, TaggingRule $rule): array
     {
+        if (!empty($rule->php_rule)) {
+            return $this->executePhpRule($rule->php_rule, $order);
+        }
+
         $tags = [];
 
         // If rule has rules_json, evaluate conditions
@@ -272,6 +277,74 @@ class TaggingEngineService
             'less_than' => floatval($fieldValue) < floatval($value),
             default => false,
         };
+    }
+
+    /**
+     * Execute PHP rule in isolated process. Code receives $order and must set $tags (array of strings).
+     * Returns array of tag strings, or empty on error.
+     */
+    public function executePhpRule(string $phpCode, array $order): array
+    {
+        $orderJson = json_encode($order);
+        if ($orderJson === false) {
+            Log::warning('TaggingEngineService: failed to encode order for PHP rule');
+            return [];
+        }
+        $orderEscaped = addcslashes($orderJson, "'\\");
+        $wrapper = <<<PHP
+<?php
+error_reporting(E_ALL & ~E_NOTICE);
+\$order = json_decode('{$orderEscaped}', true);
+\$tags = [];
+{$phpCode}
+if (!is_array(\$tags)) {
+    \$tags = [];
+}
+echo json_encode(array_values(array_filter(array_map('strval', \$tags))));
+PHP;
+        $tmpFile = tempnam(sys_get_temp_dir(), 'zyg_rule_');
+        if ($tmpFile === false) {
+            Log::warning('TaggingEngineService: could not create temp file for PHP rule');
+            return [];
+        }
+        file_put_contents($tmpFile, $wrapper);
+        $phpBinary = defined('PHP_BINARY') ? PHP_BINARY : 'php';
+        try {
+            $descriptorSpec = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+            $proc = proc_open(
+                $phpBinary . ' -d max_execution_time=10 -d memory_limit=64M ' . escapeshellarg($tmpFile),
+                $descriptorSpec,
+                $pipes,
+                null,
+                null,
+                ['bypass_shell' => true]
+            );
+            if (!is_resource($proc)) {
+                Log::warning('TaggingEngineService: proc_open failed for PHP rule');
+                @unlink($tmpFile);
+                return [];
+            }
+            fclose($pipes[0]);
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($proc);
+            @unlink($tmpFile);
+            if ($stderr) {
+                Log::debug('TaggingEngineService PHP rule stderr: ' . $stderr);
+            }
+            $decoded = json_decode($stdout, true);
+            if (!is_array($decoded)) {
+                Log::warning('TaggingEngineService: PHP rule did not return valid JSON: ' . substr($stdout, 0, 200));
+                return [];
+            }
+            return array_values(array_filter(array_map('strval', $decoded)));
+        } catch (\Throwable $e) {
+            Log::warning('TaggingEngineService executePhpRule: ' . $e->getMessage());
+            @unlink($tmpFile);
+            return [];
+        }
     }
 
     /**

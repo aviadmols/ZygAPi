@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Store;
 use App\Models\TaggingRule;
+use App\Services\OpenRouterService;
 use App\Services\ShopifyService;
 use App\Services\TaggingEngineService;
 use Illuminate\Http\Request;
@@ -14,6 +15,10 @@ use Illuminate\Http\JsonResponse;
 
 class TaggingRuleController extends Controller
 {
+    public function __construct(
+        protected OpenRouterService $openRouterService
+    ) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -67,6 +72,7 @@ class TaggingRuleController extends Controller
             'description' => 'nullable|string',
             'rules_json' => 'nullable|string',
             'tags_template' => 'nullable|string',
+            'php_rule' => 'nullable|string',
             'is_active' => 'boolean',
             'overwrite_existing_tags' => 'boolean',
         ]);
@@ -122,6 +128,7 @@ class TaggingRuleController extends Controller
             'description' => 'nullable|string',
             'rules_json' => 'nullable|string',
             'tags_template' => 'nullable|string',
+            'php_rule' => 'nullable|string',
             'is_active' => 'boolean',
             'overwrite_existing_tags' => 'boolean',
         ]);
@@ -150,6 +157,7 @@ class TaggingRuleController extends Controller
 
     /**
      * Preview tags for an order using rule data (before saving). Used on create form.
+     * Supports rules_json + tags_template, or php_rule (PHP code).
      */
     public function preview(Request $request): JsonResponse
     {
@@ -158,6 +166,7 @@ class TaggingRuleController extends Controller
             'order_id' => 'required|string',
             'rules_json' => 'nullable|string',
             'tags_template' => 'nullable|string',
+            'php_rule' => 'nullable|string',
         ]);
 
         try {
@@ -176,6 +185,7 @@ class TaggingRuleController extends Controller
             $rule = new TaggingRule();
             $rule->rules_json = $rulesJson;
             $rule->tags_template = $validated['tags_template'] ?? null;
+            $rule->php_rule = $validated['php_rule'] ?? null;
             $rule->overwrite_existing_tags = false;
 
             $tags = $taggingEngine->extractTags($order, $rule);
@@ -185,6 +195,49 @@ class TaggingRuleController extends Controller
                 'tags' => $tags,
             ]);
         } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate PHP rule from order sample and user requirements (AI).
+     */
+    public function generatePhp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'store_id' => 'nullable|exists:stores,id',
+            'order_id' => 'nullable|string',
+            'order_json' => 'nullable|string',
+            'requirements' => 'required|string',
+        ]);
+
+        try {
+            $orderData = null;
+            if (!empty($validated['order_json'])) {
+                $orderData = json_decode($validated['order_json'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return response()->json(['success' => false, 'error' => 'Invalid order JSON.'], 422);
+                }
+            }
+            if ($orderData === null && !empty($validated['store_id']) && !empty($validated['order_id'])) {
+                $store = Store::findOrFail($validated['store_id']);
+                $shopifyService = new ShopifyService($store);
+                $orderData = $shopifyService->getOrder($validated['order_id']);
+            }
+            if ($orderData === null) {
+                return response()->json(['success' => false, 'error' => 'Provide either order_json or store_id + order_id to fetch an order.'], 422);
+            }
+
+            $result = $this->openRouterService->generatePhpRule($orderData, $validated['requirements']);
+            return response()->json([
+                'success' => true,
+                'php_code' => $result['php_code'],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('TaggingRuleController::generatePhp: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),

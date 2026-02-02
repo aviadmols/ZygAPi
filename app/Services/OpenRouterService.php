@@ -111,4 +111,32 @@ class OpenRouterService
     {
         return \Database\Seeders\PromptTemplateSeeder::DEFAULT_TAGGING_PROMPT;
     }
+
+    /**
+     * Generate PHP tagging rule from order sample and user requirements.
+     * Returns array with key 'php_code' (string). Uses prompt template php_rule_generation.
+     */
+    public function generatePhpRule(array $orderData, string $userRequirements): array
+    {
+        $systemPrompt = PromptTemplate::getBySlug('php_rule_generation')
+            ?? \Database\Seeders\PromptTemplateSeeder::DEFAULT_PHP_RULE_PROMPT;
+
+        $userPrompt = "Order Data (sample):\n" . json_encode($orderData, JSON_PRETTY_PRINT)
+            . "\n\nUser requirements (what to check and which tags to return):\n" . $userRequirements;
+
+        $messages = [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user', 'content' => $userPrompt],
+        ];
+
+        $response = $this->chat($messages);
+        $content = trim($response['content']);
+
+        // Strip markdown code block if present
+        if (preg_match('/```(?:php)?\s*(.*?)\s*```/s', $content, $matches)) {
+            $content = trim($matches[1]);
+        }
+
+        return ['php_code' => $content];
+    }
 }
