@@ -93,7 +93,7 @@ class TaggingRuleController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(TaggingRule $taggingRule): View
+    public function edit(TaggingRule $taggingRule): View|\Illuminate\Http\Response
     {
         try {
             $stores = Store::where('is_active', true)->orderBy('name')->get();
@@ -102,7 +102,13 @@ class TaggingRuleController extends Controller
             $stores = collect();
         }
 
-        return view('tagging-rules.edit', compact('taggingRule', 'stores'));
+        try {
+            return view('tagging-rules.edit', compact('taggingRule', 'stores'));
+        } catch (\Throwable $e) {
+            Log::error('TaggingRuleController::edit view error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $msg = config('app.debug') ? '<h1>Error loading edit form</h1><pre>' . htmlspecialchars($e->getMessage()) . '</pre>' : '<h1>Something went wrong</h1><p>Set APP_DEBUG=true to see details.</p>';
+            return response('<html><body>' . $msg . '</body></html>', 500, ['Content-Type' => 'text/html; charset=utf-8']);
+        }
     }
 
     /**
@@ -143,7 +149,51 @@ class TaggingRuleController extends Controller
     }
 
     /**
-     * Test rule on a specific order
+     * Preview tags for an order using rule data (before saving). Used on create form.
+     */
+    public function preview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'order_id' => 'required|string',
+            'rules_json' => 'nullable|string',
+            'tags_template' => 'nullable|string',
+        ]);
+
+        try {
+            $store = Store::findOrFail($validated['store_id']);
+            $shopifyService = new ShopifyService($store);
+            $taggingEngine = new TaggingEngineService();
+
+            $order = $shopifyService->getOrder($validated['order_id']);
+
+            $rulesJson = null;
+            if (!empty($validated['rules_json'])) {
+                $decoded = json_decode($validated['rules_json'], true);
+                $rulesJson = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+            }
+
+            $rule = new TaggingRule();
+            $rule->rules_json = $rulesJson;
+            $rule->tags_template = $validated['tags_template'] ?? null;
+            $rule->overwrite_existing_tags = false;
+
+            $tags = $taggingEngine->extractTags($order, $rule);
+
+            return response()->json([
+                'success' => true,
+                'tags' => $tags,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Test rule on a specific order (for saved rule)
      */
     public function test(Request $request, TaggingRule $taggingRule): JsonResponse
     {

@@ -17,6 +17,11 @@ php artisan route:cache
 php artisan view:clear 2>/dev/null || true
 php artisan view:cache 2>/dev/null || true
 
-# Start the server
+# Start queue worker in background (processes Order Processing jobs)
+echo "Starting queue worker..."
+php artisan queue:work database --queue=order-processing,default --sleep=3 --tries=3 --max-time=3600 &
+WORKER_PID=$!
+
+# Start the server (foreground)
 echo "Starting Zyg Automations server..."
 exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}

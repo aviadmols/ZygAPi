@@ -94,19 +94,30 @@ class OrderProcessingController extends Controller
     /**
      * Get processing results
      */
-    public function getResults(OrderProcessingJob $orderProcessingJob): View|JsonResponse
+    public function getResults(OrderProcessingJob $orderProcessingJob): View|JsonResponse|\Illuminate\Http\Response
     {
+        try {
+            $job = $orderProcessingJob->load('store', 'rule');
+        } catch (\Throwable $e) {
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+            return response('<html><body><h1>Error loading job</h1><p>' . htmlspecialchars($e->getMessage()) . '</p></body></html>', 500, ['Content-Type' => 'text/html; charset=utf-8']);
+        }
+
         if (request()->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'job' => $orderProcessingJob->load('store', 'rule'),
-                'progress' => $orderProcessingJob->progress ?? [],
+                'job' => $job,
+                'progress' => $job->progress ?? [],
             ]);
         }
 
-        return view('order-processing.results', [
-            'job' => $orderProcessingJob->load('store', 'rule'),
-        ]);
+        try {
+            return view('order-processing.results', ['job' => $job]);
+        } catch (\Throwable $e) {
+            return response('<html><body><h1>Error loading results</h1><p>' . htmlspecialchars($e->getMessage()) . '</p></body></html>', 500, ['Content-Type' => 'text/html; charset=utf-8']);
+        }
     }
 
     /**

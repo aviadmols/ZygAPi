@@ -91,8 +91,72 @@
                             </button>
                         </div>
                     </form>
+
+                    <!-- Test rule (preview tags for an order before saving) -->
+                    @if(!$stores->isEmpty())
+                        <div class="mt-8 pt-6 border-t border-gray-200">
+                            <h3 class="text-lg font-semibold mb-2">Test rule</h3>
+                            <p class="text-sm text-gray-600 mb-4">Enter an order number to see which tags would be applied with the current rule (Rules JSON + Tags Template above).</p>
+                            <div class="flex flex-wrap items-end gap-4">
+                                <div class="flex-1 min-w-[200px]">
+                                    <label for="preview_order_id" class="block text-sm font-medium text-gray-700 mb-1">Order number</label>
+                                    <input type="text" id="preview_order_id" placeholder="e.g. 1234567890"
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                </div>
+                                <button type="button" id="preview-tags-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                    Test
+                                </button>
+                            </div>
+                            <div id="preview-results" class="mt-4 hidden"></div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
+    <script>
+        document.getElementById('preview-tags-btn')?.addEventListener('click', async function() {
+            const orderId = document.getElementById('preview_order_id').value.trim();
+            const storeId = document.getElementById('store_id').value;
+            const resultsDiv = document.getElementById('preview-results');
+            if (!orderId) {
+                resultsDiv.innerHTML = '<p class="text-red-600 text-sm">Please enter an order number.</p>';
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+            if (!storeId) {
+                resultsDiv.innerHTML = '<p class="text-red-600 text-sm">Please select a store first.</p>';
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+            resultsDiv.innerHTML = '<p class="text-gray-500 text-sm">Loading...</p>';
+            resultsDiv.classList.remove('hidden');
+            try {
+                const response = await fetch('{{ route("tagging-rules.preview") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        store_id: storeId,
+                        order_id: orderId,
+                        rules_json: document.getElementById('rules_json').value.trim() || null,
+                        tags_template: document.getElementById('tags_template').value.trim() || null
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const tags = data.tags || [];
+                    resultsDiv.innerHTML = '<p class="text-sm font-medium text-gray-700 mb-2">Tags that would be applied:</p>' +
+                        (tags.length ? '<div class="flex flex-wrap gap-2">' + tags.map(t => '<span class="bg-blue-500 text-white px-2 py-1 rounded text-sm">' + (t || '').replace(/</g, '&lt;') + '</span>').join('') + '</div>' : '<p class="text-gray-500 text-sm">No tags (conditions may not match or template is empty).</p>');
+                } else {
+                    resultsDiv.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">' + (data.error || 'Error') + '</div>';
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + err.message + '</div>';
+            }
+        });
+    </script>
 </x-app-layout>

@@ -45,7 +45,7 @@
                             <label for="rules_json" class="block text-sm font-medium text-gray-700">Rules JSON (optional)</label>
                             <p class="mt-1 text-xs text-gray-500 mb-1">Paste or edit the rules JSON (conditions, tags, tags_template).</p>
                             <textarea name="rules_json" id="rules_json" rows="8"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('rules_json', $taggingRule->rules_json ? json_encode($taggingRule->rules_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : '') }}</textarea>
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('rules_json', is_array($taggingRule->rules_json) ? json_encode($taggingRule->rules_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : (is_string($taggingRule->rules_json) ? $taggingRule->rules_json : '')) }}</textarea>
                             @error('rules_json')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -55,7 +55,7 @@
                             <label for="tags_template" class="block text-sm font-medium text-gray-700">Tags Template</label>
                             <textarea name="tags_template" id="tags_template" rows="5"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('tags_template', $taggingRule->tags_template) }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500">Tag template with expressions. Examples: {{ '{{switch(...)}}' }}, {{ '{{get(split(...))}}' }}</p>
+                            <p class="mt-1 text-xs text-gray-500">Tag template with expressions. Use switch, get, split inside double curly braces.</p>
                         </div>
 
                         <div class="mb-4">
