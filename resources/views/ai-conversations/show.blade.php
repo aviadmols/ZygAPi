@@ -145,7 +145,7 @@
             const message = messageInput.value.trim();
             if (!message) return;
 
-            const body = { message: message, order_data: orderDataInput.value || null };
+            const body = { message: message, order_data: orderDataInput?.value ?? null };
             debugLog('CHAT – Request (sent)', body);
 
             addMessage('user', message);
@@ -218,7 +218,7 @@
         if (generateRuleForm) {
             generateRuleForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const orderData = orderDataInput.value.trim();
+                const orderData = (orderDataInput?.value ?? '').trim();
                 const orderIdForSample = document.getElementById('generate-order-id')?.value?.trim() || null;
                 if (!orderData && !orderIdForSample) {
                     alert('Please enter Sample Order (JSON) or an Order number to fetch as sample.');
@@ -228,7 +228,8 @@
                 const userMessages = Array.from(chatMessages.querySelectorAll('[data-role="user"]'))
                     .map(el => el.textContent.trim())
                     .join('\n');
-                document.getElementById('user-requirements').value = userMessages;
+                const userReqEl = document.getElementById('user-requirements');
+                if (userReqEl) userReqEl.value = userMessages;
 
                 const body = { order_data: orderData || null, order_id: orderIdForSample, user_requirements: userMessages };
                 debugLog('GENERATE_RULE – Request (sent)', body);
@@ -289,7 +290,7 @@
                         return;
                     }
                 }
-                const body = { order_id: orderId, order_data: orderDataInput.value.trim() || null, php_code: phpCodeToSend || null };
+                const body = { order_id: orderId, order_data: (orderDataInput?.value ?? '').trim() || null, php_code: phpCodeToSend || null };
                 debugLog('TEST_ORDER – Request (sent)', body);
 
                 testOrderResults.innerHTML = '<p class="text-gray-500 text-sm">Running test...</p>';
