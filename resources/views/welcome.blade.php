@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'Shopify Tags System') }}</title>
+    <title>{{ config('app.name', 'Zyg Automations') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,600&display=swap" rel="stylesheet" />
     <style>
@@ -42,7 +42,7 @@
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
     <div class="bg-white rounded-lg shadow-sm p-8 max-w-md w-full mx-4">
-        <h1 class="text-2xl font-semibold text-gray-800 mb-2">{{ config('app.name', 'Shopify Tags System') }}</h1>
+        <h1 class="text-2xl font-semibold text-gray-800 mb-2">{{ config('app.name', 'Zyg Automations') }}</h1>
         <p class="text-gray-600 text-sm mb-6">
             Manage Shopify order tags, rules, and AI-powered tagging. Connect stores, define rules, and process orders in bulk.
         </p>

@@ -1,4 +1,4 @@
-# Shopify Tags Management System
+# Zyg Automations
 
 A comprehensive Shopify order tagging management system with AI support, multi-store capabilities, webhooks, and queue processing.
 
