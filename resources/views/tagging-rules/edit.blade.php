@@ -45,7 +45,7 @@
                             <label for="tags_template" class="block text-sm font-medium text-gray-700">Tags Template</label>
                             <textarea name="tags_template" id="tags_template" rows="5"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('tags_template', $taggingRule->tags_template) }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500">Tag template with expressions. Examples: {{switch(...)}}, {{get(split(...))}}</p>
+                            <p class="mt-1 text-xs text-gray-500">Tag template with expressions. Examples: {{ '{{switch(...)}}' }}, {{ '{{get(split(...))}}' }}</p>
                         </div>
 
                         <div class="mb-4">
