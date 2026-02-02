@@ -11,11 +11,8 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Scripts (production: CDN; local: Vite) -->
-        @if(app()->environment('production'))
-            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
-            <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-        @elseif(file_exists(public_path('build/manifest.json')))
+        <!-- Scripts: use built assets when manifest exists; else CDN fallback -->
+        @if(file_exists(public_path('build/manifest.json')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @else
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
