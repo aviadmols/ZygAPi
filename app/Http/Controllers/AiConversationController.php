@@ -235,22 +235,23 @@ class AiConversationController extends Controller
     }
 
     /**
-     * Generate PHP only from conversation (no save). Returns php_code for the PHP area + test.
+     * Generate PHP only (no save). Accepts requirements/prompt in body or from conversation. Returns php_code.
      */
     public function generatePhp(Request $request, AiConversation $aiConversation): JsonResponse
     {
-        $userRequirements = $this->getUserRequirementsFromConversation($aiConversation);
-        if (empty($userRequirements)) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Send at least one message describing what to check and which tags to return.',
-            ], 422);
-        }
-
         $validated = $request->validate([
+            'requirements' => 'nullable|string',
             'order_data' => 'nullable|string',
             'order_id' => 'nullable|string',
         ]);
+
+        $userRequirements = trim($validated['requirements'] ?? '') ?: $this->getUserRequirementsFromConversation($aiConversation);
+        if (empty($userRequirements)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Enter a prompt describing what to check and which tags to return.',
+            ], 422);
+        }
 
         $orderData = null;
         if (!empty($validated['order_data'])) {
@@ -301,15 +302,16 @@ class AiConversationController extends Controller
     }
 
     /**
-     * Generate rule from conversation: produce PHP and save as tagging rule (php_rule).
+     * Save PHP rule to Tagging Rules. Accepts php_code in body (no AI call), or order + user_requirements to generate PHP.
      */
     public function generateRule(Request $request, AiConversation $aiConversation): JsonResponse
     {
         try {
             $validated = $request->validate([
+                'php_code' => 'nullable|string',
                 'order_data' => 'nullable|string',
                 'order_id' => 'nullable|string',
-                'user_requirements' => 'required|string',
+                'user_requirements' => 'nullable|string',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -318,6 +320,39 @@ class AiConversationController extends Controller
             ], 422);
         }
 
+        $phpCode = trim($validated['php_code'] ?? '');
+        if ($phpCode !== '') {
+            // Save existing PHP from textarea (no AI)
+            Log::info('[AI Conversation] GENERATE_RULE request (save php_code)', [
+                'conversation_id' => $aiConversation->id,
+                'php_code_length' => strlen($phpCode),
+            ]);
+            try {
+                $rule = TaggingRule::create([
+                    'store_id' => $aiConversation->store_id,
+                    'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
+                    'description' => 'Saved from AI Conversation (PHP rule)',
+                    'rules_json' => null,
+                    'tags_template' => null,
+                    'php_rule' => $phpCode,
+                    'is_active' => false,
+                    'overwrite_existing_tags' => false,
+                ]);
+                $aiConversation->generated_rule_id = $rule->id;
+                $aiConversation->save();
+                return response()->json([
+                    'success' => true,
+                    'rule' => $rule,
+                    'php_code' => $phpCode,
+                    'message' => 'Rule saved to Tagging Rules.',
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('[AI Conversation] GENERATE_RULE save error', ['error' => $e->getMessage()]);
+                return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            }
+        }
+
+        // Fallback: generate PHP from order + user_requirements
         $orderData = null;
         if (!empty($validated['order_data'])) {
             $orderData = json_decode($validated['order_data'], true);
@@ -328,11 +363,11 @@ class AiConversationController extends Controller
                 ], 422);
             }
         }
-        if ($orderData === null && !empty($validated['order_id'])) {
+        if ($orderData === null && !empty($validated['order_id'] ?? '')) {
             try {
                 $store = $aiConversation->store;
                 $shopifyService = new ShopifyService($store);
-                $orderData = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
+                $orderData = $shopifyService->getOrderByIdOrNumber(trim($validated['order_id']));
             } catch (\Throwable $e) {
                 return response()->json([
                     'success' => false,
@@ -343,26 +378,26 @@ class AiConversationController extends Controller
         if ($orderData === null) {
             return response()->json([
                 'success' => false,
-                'error' => 'Provide sample order: paste Order JSON or enter Order number to fetch.',
+                'error' => 'Provide sample order or paste PHP in the PHP Rule field and save.',
+            ], 422);
+        }
+        $userRequirements = trim($validated['user_requirements'] ?? '');
+        if ($userRequirements === '') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Enter a prompt or paste PHP code in the PHP Rule field and save.',
             ], 422);
         }
 
-        Log::info('[AI Conversation] GENERATE_RULE request', [
+        Log::info('[AI Conversation] GENERATE_RULE request (generate)', [
             'conversation_id' => $aiConversation->id,
-            'has_order_data' => !empty($validated['order_data']),
-            'order_id' => $validated['order_id'] ?? null,
-            'user_requirements_length' => strlen($validated['user_requirements'] ?? ''),
+            'user_requirements_length' => strlen($userRequirements),
         ]);
 
         try {
-            $userRequirements = $validated['user_requirements'];
-
-            // Generate PHP rule using AI
             $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
             $phpCode = $result['php_code'];
-            Log::info('[AI Conversation] GENERATE_RULE step: PHP generated', ['php_code_length' => strlen($phpCode)]);
 
-            // Create tagging rule with php_rule (usable in tagging-rules)
             $rule = TaggingRule::create([
                 'store_id' => $aiConversation->store_id,
                 'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
