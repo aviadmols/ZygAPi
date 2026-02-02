@@ -6,6 +6,8 @@ use App\Models\AiConversation;
 use App\Models\Store;
 use App\Models\TaggingRule;
 use App\Services\OpenRouterService;
+use App\Services\ShopifyService;
+use App\Services\TaggingEngineService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -128,14 +130,71 @@ class AiConversationController extends Controller
     }
 
     /**
-     * Generate rule from conversation.
-     * Always returns JSON so the client never gets HTML (e.g. 500 page).
+     * Test with order number: generate PHP from conversation, run on order, return tags.
+     */
+    public function testOrder(Request $request, AiConversation $aiConversation): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'order_id' => 'required|string',
+                'order_data' => 'nullable|string',
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Validation failed: ' . implode(' ', $e->validator->errors()->all()),
+            ], 422);
+        }
+
+        try {
+            $store = $aiConversation->store;
+            $shopifyService = new ShopifyService($store);
+            $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
+
+            $userRequirements = $this->getUserRequirementsFromConversation($aiConversation);
+            if (empty($userRequirements)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No user requirements in conversation. Send at least one message describing what to check and which tags to return.',
+                ], 422);
+            }
+
+            $orderSample = $order;
+            if (!empty($validated['order_data'])) {
+                $decoded = json_decode($validated['order_data'], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $orderSample = $decoded;
+                }
+            }
+
+            $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements);
+            $phpCode = $result['php_code'];
+
+            $taggingEngine = new TaggingEngineService();
+            $tags = $taggingEngine->executePhpRule($phpCode, $order);
+
+            return response()->json([
+                'success' => true,
+                'tags' => $tags,
+                'php_code' => $phpCode,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate rule from conversation: produce PHP and save as tagging rule (php_rule).
      */
     public function generateRule(Request $request, AiConversation $aiConversation): JsonResponse
     {
         try {
             $validated = $request->validate([
-                'order_data' => 'required|string',
+                'order_data' => 'nullable|string',
+                'order_id' => 'nullable|string',
                 'user_requirements' => 'required|string',
             ]);
         } catch (ValidationException $e) {
@@ -145,39 +204,62 @@ class AiConversationController extends Controller
             ], 422);
         }
 
-        $orderData = json_decode($validated['order_data'], true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        $orderData = null;
+        if (!empty($validated['order_data'])) {
+            $orderData = json_decode($validated['order_data'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invalid JSON in order_data.',
+                ], 422);
+            }
+        }
+        if ($orderData === null && !empty($validated['order_id'])) {
+            try {
+                $store = $aiConversation->store;
+                $shopifyService = new ShopifyService($store);
+                $orderData = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Could not fetch order: ' . $e->getMessage(),
+                ], 422);
+            }
+        }
+        if ($orderData === null) {
             return response()->json([
                 'success' => false,
-                'error' => 'Invalid JSON in order_data.',
+                'error' => 'Provide sample order: paste Order JSON or enter Order number to fetch.',
             ], 422);
         }
 
         try {
             $userRequirements = $validated['user_requirements'];
 
-            // Generate rule using AI
-            $ruleData = $this->openRouterService->generateTaggingRule($orderData, $userRequirements);
+            // Generate PHP rule using AI
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
+            $phpCode = $result['php_code'];
 
-            // Create tagging rule
+            // Create tagging rule with php_rule (usable in tagging-rules)
             $rule = TaggingRule::create([
                 'store_id' => $aiConversation->store_id,
                 'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
-                'description' => 'Automatically generated from AI conversation',
-                'rules_json' => $ruleData,
-                'tags_template' => $ruleData['tags_template'] ?? null,
-                'is_active' => false, // User should review before activating
+                'description' => 'Automatically generated from AI conversation (PHP rule)',
+                'rules_json' => null,
+                'tags_template' => null,
+                'php_rule' => $phpCode,
+                'is_active' => false,
                 'overwrite_existing_tags' => false,
             ]);
 
-            // Link rule to conversation
             $aiConversation->generated_rule_id = $rule->id;
             $aiConversation->save();
 
             return response()->json([
                 'success' => true,
                 'rule' => $rule,
-                'message' => 'Rule generated successfully',
+                'php_code' => $phpCode,
+                'message' => 'Rule generated successfully. You can edit and test it in Tagging Rules.',
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -185,6 +267,21 @@ class AiConversationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Get user requirements string from conversation messages (user role only).
+     */
+    protected function getUserRequirementsFromConversation(AiConversation $aiConversation): string
+    {
+        $messages = $aiConversation->messages ?? [];
+        $parts = [];
+        foreach ($messages as $msg) {
+            if (($msg['role'] ?? '') === 'user' && !empty($msg['content'])) {
+                $parts[] = trim($msg['content']);
+            }
+        }
+        return implode("\n", $parts);
     }
 
     /**

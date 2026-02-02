@@ -53,6 +53,40 @@ class ShopifyService
     }
 
     /**
+     * Get order by order number (e.g. 1005). Falls back when getOrder by ID returns 404.
+     */
+    public function getOrderByOrderNumber(string $orderNumber): array
+    {
+        $url = "https://{$this->store->shopify_store_url}/admin/api/2024-10/orders.json?name=" . urlencode($orderNumber) . "&limit=1";
+
+        $response = Http::withHeaders([
+            'X-Shopify-Access-Token' => $this->store->shopify_access_token,
+            'Content-Type' => 'application/json',
+        ])->get($url);
+
+        if ($response->failed() || !isset($response->json()['orders'][0])) {
+            throw new \Exception("Order not found for order number: {$orderNumber}");
+        }
+
+        return $response->json()['orders'][0];
+    }
+
+    /**
+     * Get order by ID or by order number (tries ID first, then order number).
+     */
+    public function getOrderByIdOrNumber(string $orderIdOrNumber): array
+    {
+        try {
+            return $this->getOrder($orderIdOrNumber);
+        } catch (\Exception $e) {
+            if (strpos($e->getMessage(), '404') !== false) {
+                return $this->getOrderByOrderNumber($orderIdOrNumber);
+            }
+            throw $e;
+        }
+    }
+
+    /**
      * Update order tags in Shopify
      */
     public function updateOrderTags(string $orderId, array $tags, bool $overwrite = false): bool
