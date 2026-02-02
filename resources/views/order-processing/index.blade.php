@@ -71,28 +71,37 @@
         const storeSelect = document.getElementById('store_id');
         const ruleSelect = document.getElementById('rule_id');
 
-        // Load rules when store changes
-        storeSelect.addEventListener('change', async () => {
-            const storeId = storeSelect.value;
+        function loadRulesForStore(storeId) {
             if (!storeId) {
                 ruleSelect.innerHTML = '<option value="">All Active Rules</option>';
                 return;
             }
-
-            try {
-                const response = await fetch(`/tagging-rules?store_id=${storeId}`);
-                const rules = await response.json();
-                ruleSelect.innerHTML = '<option value="">All Active Rules</option>';
-                rules.forEach(rule => {
-                    const option = document.createElement('option');
-                    option.value = rule.id;
-                    option.textContent = rule.name;
-                    ruleSelect.appendChild(option);
+            ruleSelect.innerHTML = '<option value="">All Active Rules</option>';
+            fetch(`{{ url('tagging-rules') }}?store_id=${storeId}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load rules');
+                    return response.json();
+                })
+                .then(rules => {
+                    if (!Array.isArray(rules)) return;
+                    rules.forEach(rule => {
+                        const option = document.createElement('option');
+                        option.value = rule.id;
+                        option.textContent = rule.name + (rule.is_active ? ' (Active)' : '');
+                        ruleSelect.appendChild(option);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading rules:', err);
                 });
-            } catch (error) {
-                console.error('Error loading rules:', error);
-            }
-        });
+        }
+
+        storeSelect.addEventListener('change', () => loadRulesForStore(storeSelect.value));
+
+        // Load rules on page load if store already selected
+        if (storeSelect.value) loadRulesForStore(storeSelect.value);
 
         processForm.addEventListener('submit', async (e) => {
             e.preventDefault();

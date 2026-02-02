@@ -38,8 +38,8 @@ class ProcessOrderTaggingJob implements ShouldQueue
             $shopifyService = new ShopifyService($store);
             $taggingEngine = new TaggingEngineService();
 
-            // Get order from Shopify
-            $order = $shopifyService->getOrder($this->orderId);
+            // Get order from Shopify (by ID or order number)
+            $order = $shopifyService->getOrderByIdOrNumber($this->orderId);
 
             // Get rule if specified
             if ($this->ruleId) {
