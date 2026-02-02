@@ -104,7 +104,7 @@ class AiConversationController extends Controller
             if (empty($messages) || count($messages) === 1) {
                 $systemMessage = [
                     'role' => 'system',
-                    'content' => 'You are a helper for creating Shopify order tagging rules. The user will define rules in text and you will help create an appropriate JSON structure.',
+                    'content' => 'You are a helper for creating Shopify order tagging rules. The user will describe what to check and which tags to return. Your answers will be used to generate PHP code (not JSON) that sets $tags from $order. Keep replies concise and focused on conditions and tag names.',
                 ];
                 array_unshift($messages, $systemMessage);
             }
@@ -225,6 +225,72 @@ class AiConversationController extends Controller
             Log::warning('[AI Conversation] TEST_ORDER response ERROR', [
                 'conversation_id' => $aiConversation->id,
                 'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate PHP only from conversation (no save). Returns php_code for the PHP area + test.
+     */
+    public function generatePhp(Request $request, AiConversation $aiConversation): JsonResponse
+    {
+        $userRequirements = $this->getUserRequirementsFromConversation($aiConversation);
+        if (empty($userRequirements)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Send at least one message describing what to check and which tags to return.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'order_data' => 'nullable|string',
+            'order_id' => 'nullable|string',
+        ]);
+
+        $orderData = null;
+        if (!empty($validated['order_data'])) {
+            $orderData = json_decode($validated['order_data'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invalid JSON in order_data.',
+                ], 422);
+            }
+        }
+        if ($orderData === null && !empty($validated['order_id'] ?? '')) {
+            try {
+                $store = $aiConversation->store;
+                $shopifyService = new ShopifyService($store);
+                $orderData = $shopifyService->getOrderByIdOrNumber(trim($validated['order_id']));
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Could not fetch order: ' . $e->getMessage(),
+                ], 422);
+            }
+        }
+
+        if ($orderData === null) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Provide a sample order: paste Order JSON or enter Order number to fetch.',
+            ], 422);
+        }
+
+        try {
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
+            return response()->json([
+                'success' => true,
+                'php_code' => $result['php_code'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[AI Conversation] GENERATE_PHP error', [
+                'conversation_id' => $aiConversation->id,
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

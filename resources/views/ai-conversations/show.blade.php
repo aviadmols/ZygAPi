@@ -43,27 +43,35 @@
                         </div>
                     </form>
 
-                    <!-- Order Data Input -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Sample Order (JSON) - Optional</label>
-                        <textarea id="order-data" rows="5"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
-                            placeholder='{"id": "123", "line_items": [...]}'></textarea>
-                        <p class="mt-1 text-xs text-gray-500">Paste order JSON, or leave empty and use Order number below to fetch.</p>
-                    </div>
-
-                    <!-- PHP Rule: edit and test -->
+                    <!-- Sample order + Generate PHP + PHP Rule + Test -->
                     @if(count($aiConversation->messages ?? []) > 0)
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sample order for PHP generation</label>
+                            <p class="text-xs text-gray-500 mb-2">Paste order JSON or enter an order number. Required for &quot;Generate PHP&quot; so the AI can tailor the code.</p>
+                            <textarea id="order-data" rows="4"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
+                                placeholder='{"id": "123", "line_items": [...]}'></textarea>
+                            <div class="mt-2 flex flex-wrap items-center gap-4">
+                                <div class="min-w-[200px]">
+                                    <label for="generate-order-id" class="block text-xs font-medium text-gray-600 mb-1">Or fetch by order number</label>
+                                    <input type="text" id="generate-order-id" placeholder="e.g. 1005"
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                </div>
+                                <button type="button" id="generate-php-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                    Generate PHP
+                                </button>
+                            </div>
+                        </div>
                         <div class="mb-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                            <h3 class="text-sm font-semibold text-gray-800 mb-2">PHP Rule – edit and run tests</h3>
-                            <p class="text-xs text-gray-600 mb-2">Edit the PHP code below. If empty, Test will generate it from this conversation. After a test, the generated code appears here so you can edit and test again.</p>
-                            <label for="php-rule-edit" class="block text-sm font-medium text-gray-700 mb-1">PHP Rule (use $order and set $tags)</label>
-                            <textarea id="php-rule-edit" rows="14" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
-                                placeholder="$tags = [];&#10;// If you leave this empty and click Test, PHP will be generated from the conversation above."></textarea>
+                            <h3 class="text-sm font-semibold text-gray-800 mb-2">PHP Rule</h3>
+                            <p class="text-xs text-gray-600 mb-2">Click &quot;Generate PHP&quot; above to fill this from your conversation (structure: $tags = [], early return, subscription, box, Flow, high_ltv). Edit if needed, then test with an order number below.</p>
+                            <label for="php-rule-edit" class="block text-sm font-medium text-gray-700 mb-1">PHP code (sets $tags from $order)</label>
+                            <textarea id="php-rule-edit" rows="16" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
+                                placeholder="$tags = [];&#10;if (empty($order) || empty($order['line_items'])) { ... }"></textarea>
                         </div>
                         <div class="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                             <h3 class="text-sm font-semibold text-gray-800 mb-2">Test with order number</h3>
-                            <p class="text-xs text-gray-600 mb-3">Enter an order ID or order number. If PHP Rule above has code, it will be used; otherwise PHP is generated from this conversation.</p>
+                            <p class="text-xs text-gray-600 mb-3">Enter an order ID or number. The PHP Rule above will run on that order and show which tags would be applied.</p>
                             <div class="flex flex-wrap items-end gap-4">
                                 <div class="flex-1 min-w-[180px]">
                                     <label for="test-order-id" class="block text-sm font-medium text-gray-700 mb-1">Order ID or order number</label>
@@ -83,18 +91,10 @@
                         <form id="generate-rule-form" class="mb-4">
                             @csrf
                             <input type="hidden" id="user-requirements" name="user_requirements">
-                            <p class="text-sm text-gray-600 mb-2">Generate a PHP rule from this conversation and save it to Tagging Rules. You can then edit and run it there.</p>
-                            <div class="flex flex-wrap items-center gap-4">
-                                <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                                    Generate Rule from Conversation
-                                </button>
-                                <span class="text-xs text-gray-500">Requires: Sample Order (JSON above) or Order number below.</span>
-                            </div>
-                            <div class="mt-2">
-                                <label for="generate-order-id" class="block text-sm font-medium text-gray-700 mb-1">Or fetch sample by order number (optional)</label>
-                                <input type="text" id="generate-order-id" placeholder="Order ID or number to use as sample"
-                                    class="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                            </div>
+                            <p class="text-sm text-gray-600 mb-2">Save the PHP rule above to Tagging Rules. Uses the sample order (JSON or order number) from above.</p>
+                            <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                Save Rule to Tagging Rules
+                            </button>
                         </form>
                     @endif
 
@@ -174,6 +174,46 @@
                 alert('Communication error: ' + error.message);
             }
         });
+
+        const generatePhpBtn = document.getElementById('generate-php-btn');
+        const phpRuleEdit = document.getElementById('php-rule-edit');
+        if (generatePhpBtn && phpRuleEdit) {
+            generatePhpBtn.addEventListener('click', async () => {
+                const orderData = orderDataInput ? orderDataInput.value.trim() : '';
+                const orderId = document.getElementById('generate-order-id')?.value?.trim() || '';
+                if (!orderData && !orderId) {
+                    alert('Provide a sample order: paste Order JSON or enter an order number to fetch.');
+                    return;
+                }
+                generatePhpBtn.disabled = true;
+                generatePhpBtn.textContent = 'Generating...';
+                try {
+                    const response = await fetch('{{ route("ai-conversations.generate-php", $aiConversation) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ order_data: orderData || null, order_id: orderId || null })
+                    });
+                    const data = await response.json();
+                    debugLog('GENERATE_PHP – Response', { success: data.success, php_code_length: data.php_code ? data.php_code.length : 0, error: data.error || null });
+                    if (data.success && data.php_code) {
+                        phpRuleEdit.value = data.php_code;
+                        alert('PHP code generated. Edit if needed, then enter an order number and click Test to see tags.');
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error'));
+                    }
+                } catch (err) {
+                    debugLog('GENERATE_PHP – Error', err.message);
+                    alert('Communication error: ' + err.message);
+                } finally {
+                    generatePhpBtn.disabled = false;
+                    generatePhpBtn.textContent = 'Generate PHP';
+                }
+            });
+        }
 
         if (generateRuleForm) {
             generateRuleForm.addEventListener('submit', async (e) => {
