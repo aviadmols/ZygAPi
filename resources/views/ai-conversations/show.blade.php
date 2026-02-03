@@ -245,14 +245,18 @@
                     });
                     const data = await response.json();
                     const conversationType = '{{ $aiConversation->type ?? "tags" }}';
-                    debugLog('TEST_ORDER – Response', data);
+                    debugLog('TEST_ORDER – Response', { success: data.success, tags: data.tags || data.metafields || data.subscription_updates || null, error: data.error || null });
                     
-                    // Log API information
+                    // Log API information (condensed)
                     if (data.api_logs) {
-                        debugLog('SHOPIFY ORDER DATA', {
+                        debugLog('SHOPIFY ORDER SUMMARY', {
                             order_id: data.api_logs.shopify_order?.order_id,
                             order_number: data.api_logs.shopify_order?.order_number,
-                            order_data: data.api_logs.shopify_order?.order_data
+                            customer_email: data.api_logs.shopify_order?.customer_email,
+                            line_items_count: data.api_logs.shopify_order?.line_items_count,
+                            line_items_summary: data.api_logs.shopify_order?.line_items_summary,
+                            tags: data.api_logs.shopify_order?.tags,
+                            created_at: data.api_logs.shopify_order?.created_at
                         });
                         
                         if (data.api_logs.recharge_calls && data.api_logs.recharge_calls.length > 0) {

@@ -183,12 +183,24 @@ class AiConversationController extends Controller
             $orderId = $order['id'] ?? $validated['order_id'];
             Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $orderId]);
             
-            // Collect API call logs
+            // Collect API call logs - only essential information
             $apiLogs = [
                 'shopify_order' => [
                     'order_id' => $orderId,
                     'order_number' => $order['order_number'] ?? $order['name'] ?? null,
-                    'order_data' => $order,
+                    'customer_email' => $order['customer']['email'] ?? null,
+                    'line_items_count' => count($order['line_items'] ?? []),
+                    'line_items_summary' => array_map(function($item) {
+                        return [
+                            'id' => $item['id'] ?? null,
+                            'title' => $item['title'] ?? null,
+                            'sku' => $item['sku'] ?? null,
+                            'quantity' => $item['quantity'] ?? null,
+                            'properties' => $item['properties'] ?? [],
+                        ];
+                    }, array_slice($order['line_items'] ?? [], 0, 5)), // Only first 5 items
+                    'tags' => $order['tags'] ?? null,
+                    'created_at' => $order['created_at'] ?? null,
                 ],
                 'recharge_calls' => [],
             ];
@@ -301,40 +313,42 @@ class AiConversationController extends Controller
                 $rechargeAccessToken = $store->recharge_access_token ?? '';
                 
                 // Check if code makes Recharge API calls and intercept them
-                $rechargeCalls = [];
                 if ($rechargeAccessToken && preg_match('/api\.rechargeapps\.com/i', $phpCode)) {
                     // Try to find subscription calls
                     try {
-                        $rechargeService = new \App\Services\RechargeService($store);
-                        // Try to get subscriptions for this order
-                        $subscriptions = [];
-                        try {
-                            $url = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
-                            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                                'X-Recharge-Access-Token' => $rechargeAccessToken,
-                                'Content-Type' => 'application/json',
-                            ])->get($url);
-                            
-                            $apiLogs['recharge_calls'][] = [
-                                'url' => $url,
-                                'method' => 'GET',
-                                'status' => $response->status(),
-                                'response' => $response->json(),
-                            ];
-                            
-                            if ($response->successful()) {
-                                $data = $response->json();
-                                $subscriptions = $data['subscriptions'] ?? [];
-                            }
-                        } catch (\Throwable $e) {
-                            $apiLogs['recharge_calls'][] = [
-                                'url' => $url ?? 'N/A',
-                                'method' => 'GET',
-                                'error' => $e->getMessage(),
+                        $url = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
+                        $response = \Illuminate\Support\Facades\Http::withHeaders([
+                            'X-Recharge-Access-Token' => $rechargeAccessToken,
+                            'Content-Type' => 'application/json',
+                        ])->get($url);
+                        
+                        $responseData = $response->json();
+                        $subscriptions = $responseData['subscriptions'] ?? [];
+                        
+                        // Only log essential subscription info
+                        $subscriptionsSummary = [];
+                        foreach (array_slice($subscriptions, 0, 5) as $sub) { // Only first 5
+                            $subscriptionsSummary[] = [
+                                'id' => $sub['id'] ?? null,
+                                'status' => $sub['status'] ?? null,
+                                'next_charge_scheduled_at' => $sub['next_charge_scheduled_at'] ?? null,
+                                'quantity' => $sub['quantity'] ?? null,
                             ];
                         }
+                        
+                        $apiLogs['recharge_calls'][] = [
+                            'url' => $url,
+                            'method' => 'GET',
+                            'status' => $response->status(),
+                            'subscriptions_count' => count($subscriptions),
+                            'subscriptions_summary' => $subscriptionsSummary,
+                        ];
                     } catch (\Throwable $e) {
-                        // Ignore
+                        $apiLogs['recharge_calls'][] = [
+                            'url' => $url ?? 'N/A',
+                            'method' => 'GET',
+                            'error' => $e->getMessage(),
+                        ];
                     }
                 }
                 
