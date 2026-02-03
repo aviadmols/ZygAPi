@@ -314,15 +314,15 @@ class AiConversationController extends Controller
                 
                 // Check if code makes Recharge API calls and intercept them
                 if ($rechargeAccessToken && preg_match('/api\.rechargeapps\.com/i', $phpCode)) {
-                    // Try to find subscription calls
+                    // First, get subscriptions (GET)
                     try {
-                        $url = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
-                        $response = \Illuminate\Support\Facades\Http::withHeaders([
+                        $getUrl = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
+                        $getResponse = \Illuminate\Support\Facades\Http::withHeaders([
                             'X-Recharge-Access-Token' => $rechargeAccessToken,
                             'Content-Type' => 'application/json',
-                        ])->get($url);
+                        ])->get($getUrl);
                         
-                        $responseData = $response->json();
+                        $responseData = $getResponse->json();
                         $subscriptions = $responseData['subscriptions'] ?? [];
                         
                         // Only log essential subscription info
@@ -337,15 +337,15 @@ class AiConversationController extends Controller
                         }
                         
                         $apiLogs['recharge_calls'][] = [
-                            'url' => $url,
+                            'url' => $getUrl,
                             'method' => 'GET',
-                            'status' => $response->status(),
+                            'status' => $getResponse->status(),
                             'subscriptions_count' => count($subscriptions),
                             'subscriptions_summary' => $subscriptionsSummary,
                         ];
                     } catch (\Throwable $e) {
                         $apiLogs['recharge_calls'][] = [
-                            'url' => $url ?? 'N/A',
+                            'url' => $getUrl ?? 'N/A',
                             'method' => 'GET',
                             'error' => $e->getMessage(),
                         ];
@@ -355,11 +355,66 @@ class AiConversationController extends Controller
                 // Remove <?php tag if present for eval()
                 $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
                 $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
+                
+                // Intercept HTTP calls to Recharge API during eval
+                $originalHttpPut = null;
+                if ($rechargeAccessToken && preg_match('/api\.rechargeapps\.com/i', $phpCode)) {
+                    // Wrap Http::put to log PUT requests
+                    \Illuminate\Support\Facades\Http::macro('putRecharge', function($url, $data = []) use ($rechargeAccessToken, &$apiLogs) {
+                        $response = \Illuminate\Support\Facades\Http::withHeaders([
+                            'X-Recharge-Access-Token' => $rechargeAccessToken,
+                            'Content-Type' => 'application/json',
+                        ])->put($url, $data);
+                        
+                        $apiLogs['recharge_calls'][] = [
+                            'url' => $url,
+                            'method' => 'PUT',
+                            'request_body' => $data,
+                            'status' => $response->status(),
+                            'response' => $response->json(),
+                        ];
+                        
+                        return $response;
+                    });
+                }
+                
                 try {
                     eval($codeToEval);
                 } catch (\Throwable $e) {
                     Log::error('Recharge PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
                     throw new \Exception("PHP execution error: " . $e->getMessage());
+                }
+                
+                // Also check if code would make PUT calls (by checking subscriptionUpdates)
+                if (!empty($subscriptionUpdates) && $rechargeAccessToken) {
+                    // Try to get subscription IDs first
+                    try {
+                        $getUrl = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
+                        $getResponse = \Illuminate\Support\Facades\Http::withHeaders([
+                            'X-Recharge-Access-Token' => $rechargeAccessToken,
+                            'Content-Type' => 'application/json',
+                        ])->get($getUrl);
+                        
+                        if ($getResponse->successful()) {
+                            $subsData = $getResponse->json();
+                            $subs = $subsData['subscriptions'] ?? [];
+                            foreach (array_slice($subs, 0, 3) as $sub) { // Test PUT on first 3 subscriptions
+                                $subId = $sub['id'] ?? null;
+                                if ($subId) {
+                                    $putUrl = "https://api.rechargeapps.com/subscriptions/{$subId}";
+                                    // Don't actually PUT, just log what would be sent
+                                    $apiLogs['recharge_calls'][] = [
+                                        'url' => $putUrl,
+                                        'method' => 'PUT',
+                                        'request_body' => ['subscription' => $subscriptionUpdates],
+                                        'note' => 'This PUT call would be made with the calculated updates',
+                                    ];
+                                }
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        // Ignore
+                    }
                 }
                 
                 $updatesResult = $subscriptionUpdates ?? [];
