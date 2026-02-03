@@ -320,14 +320,22 @@ class TaggingEngineService
         }
         $wrapper = <<<PHP
 <?php
-error_reporting(E_ALL & ~E_NOTICE);
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
+ini_set('display_errors', 0);
+ini_set('log_errors', 0);
+ob_start();
 \$order = json_decode('{$orderEscaped}', true);
 \$tags = [];
 \$shopDomain = '{$shopDomain}';
 \$accessToken = '{$accessToken}';
-(function() use (&\$tags, \$order, \$shopDomain, \$accessToken) {
+try {
+    (function() use (&\$tags, \$order, \$shopDomain, \$accessToken) {
 {$phpCode}
-})();
+    })();
+} catch (\Throwable \$e) {
+    // Silently catch errors
+}
+ob_end_clean();
 if (!is_array(\$tags)) {
     \$tags = [];
 }
@@ -365,9 +373,19 @@ PHP;
             if ($stderr) {
                 Log::warning('TaggingEngineService PHP rule stderr: ' . $stderr);
             }
+            // Trim whitespace and newlines from output
+            $stdout = trim($stdout);
             if (empty($stdout)) {
                 Log::warning('TaggingEngineService: PHP rule returned empty output. stderr: ' . ($stderr ?: 'none'));
                 return [];
+            }
+            // Try to extract JSON if there's extra output before/after
+            if (preg_match('/\[.*\]/', $stdout, $matches)) {
+                // Found array-like JSON, use it
+                $stdout = $matches[0];
+            } elseif (preg_match('/\{.*\}/', $stdout, $matches)) {
+                // Found object-like JSON, use it
+                $stdout = $matches[0];
             }
             $decoded = json_decode($stdout, true);
             if (!is_array($decoded)) {
