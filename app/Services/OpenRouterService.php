@@ -113,16 +113,48 @@ class OpenRouterService
     }
 
     /**
-     * Generate PHP tagging rule from order sample and user requirements.
+     * Generate PHP rule from order sample and user requirements.
      * Returns array with key 'php_code' (string). Uses prompt template php_rule_generation.
+     * @param string $type 'tags', 'metafields', or 'recharge'
      */
-    public function generatePhpRule(array $orderData, string $userRequirements): array
+    public function generatePhpRule(array $orderData, string $userRequirements, string $type = 'tags'): array
     {
-        $systemPrompt = PromptTemplate::getBySlug('php_rule_generation')
-            ?? \Database\Seeders\PromptTemplateSeeder::DEFAULT_PHP_RULE_PROMPT;
+        if ($type === 'metafields') {
+            $systemPrompt = "You are an expert at writing PHP code for updating Shopify order metafields in Zyg Automations.
+
+Output **only** PHP code. No JSON, no markdown. Variables: `\$order` (array), `\$shopDomain` (string), `\$accessToken` (string). Set `\$metafields` to an array where keys are namespace.key and values are metafield values.
+
+Structure:
+1. \$metafields = [];
+2. if (empty(\$order) || empty(\$order['id'])) { return; }
+3. Calculate metafield values based on order data
+4. Set metafields: \$metafields['custom']['fulfillment_date'] = date('Y-m-d\\TH:i:s\\Z', strtotime(\$order['created_at'] . ' +12 days'));
+5. Dates in ISO 8601: YYYY-MM-DDTHH:mm:ssZ
+
+Example: \$metafields['custom']['fulfillment_date'] = date('Y-m-d\\TH:i:s\\Z', strtotime(\$order['created_at'] . ' +12 days'));
+
+Output only PHP code.";
+        } elseif ($type === 'recharge') {
+            $systemPrompt = "You are an expert at writing PHP code for updating Recharge subscriptions in Zyg Automations.
+
+Output **only** PHP code. No JSON, no markdown. Variables: `\$order` (array), `\$shopDomain` (string), `\$accessToken` (string), `\$rechargeAccessToken` (string). Set `\$subscriptionUpdates` to an array of updates.
+
+Structure:
+1. \$subscriptionUpdates = [];
+2. if (empty(\$order) || empty(\$order['id'])) { return; }
+3. Find subscriptions: GET https://api.rechargeapps.com/subscriptions?shopify_order_id={\$order['id']} with header X-Recharge-Access-Token: \$rechargeAccessToken
+4. Calculate updates: \$subscriptionUpdates['next_charge_scheduled_at'] = date('Y-m-d', strtotime('+13 days'));
+5. Common fields: next_charge_scheduled_at, next_order_scheduled_at, quantity, order_interval_unit, order_interval_frequency
+6. Set commit_update: true
+
+Output only PHP code.";
+        } else {
+            $systemPrompt = PromptTemplate::getBySlug('php_rule_generation')
+                ?? \Database\Seeders\PromptTemplateSeeder::DEFAULT_PHP_RULE_PROMPT;
+        }
 
         $userPrompt = "Order Data (sample):\n" . json_encode($orderData, JSON_PRETTY_PRINT)
-            . "\n\nUser requirements (what to check and which tags to return):\n" . $userRequirements;
+            . "\n\nUser requirements:\n" . $userRequirements;
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],

@@ -10,8 +10,13 @@ class AiConversation extends Model
     protected $fillable = [
         'store_id',
         'user_id',
+        'type',
         'messages',
         'generated_rule_id',
+    ];
+
+    protected $attributes = [
+        'type' => 'tags',
     ];
 
     protected $casts = [

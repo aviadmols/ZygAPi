@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('ai_conversations', function (Blueprint $table) {
-            //
+            $table->string('type')->default('tags')->after('user_id');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('ai_conversations', function (Blueprint $table) {
-            //
+            $table->dropColumn('type');
         });
     }
 };
