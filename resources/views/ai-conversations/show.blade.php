@@ -238,15 +238,63 @@
                         body: JSON.stringify(body)
                     });
                     const data = await response.json();
-                    debugLog('TEST_ORDER – Response', { success: data.success, tags: data.tags || [], error: data.error || null });
+                    const conversationType = '{{ $aiConversation->type ?? "tags" }}';
+                    debugLog('TEST_ORDER – Response', data);
                     if (data.success) {
-                        const tags = data.tags || [];
-                        let html = '<p class="text-sm font-medium text-gray-700 mb-2">Tags that would be applied:</p>';
-                        if (tags.length) {
-                            html += '<div class="flex flex-wrap gap-2">' + tags.map(t => '<span class="bg-blue-500 text-white px-2 py-1 rounded text-sm">' + (t || '').replace(/</g, '&lt;') + '</span>').join('') + '</div>';
-                        } else {
-                            html += '<p class="text-gray-500 text-sm">No tags.</p>';
+                        let html = '';
+                        
+                        if (conversationType === 'tags') {
+                            const tags = data.tags || [];
+                            html = '<p class="text-sm font-medium text-gray-700 mb-2">Tags that would be applied:</p>';
+                            if (tags.length) {
+                                html += '<div class="flex flex-wrap gap-2">' + tags.map(t => '<span class="bg-blue-500 text-white px-2 py-1 rounded text-sm">' + (t || '').replace(/</g, '&lt;') + '</span>').join('') + '</div>';
+                            } else {
+                                html += '<p class="text-gray-500 text-sm">No tags.</p>';
+                            }
+                        } else if (conversationType === 'metafields') {
+                            const metafields = data.metafields || {};
+                            const metafieldsList = data.metafields_list || [];
+                            const summary = data.summary || {};
+                            
+                            html = '<div class="bg-green-50 border border-green-200 rounded-lg p-4">';
+                            html += '<p class="text-sm font-semibold text-gray-800 mb-2">' + (summary.message || 'Metafields calculated') + '</p>';
+                            
+                            if (metafieldsList.length > 0) {
+                                html += '<div class="mt-3 space-y-2">';
+                                metafieldsList.forEach(mf => {
+                                    html += '<div class="bg-white border border-gray-200 rounded p-2">';
+                                    html += '<p class="text-xs font-mono text-gray-600">' + mf.full_key.replace(/</g, '&lt;') + '</p>';
+                                    html += '<p class="text-sm text-gray-800 mt-1">' + String(mf.value || '').replace(/</g, '&lt;') + '</p>';
+                                    html += '</div>';
+                                });
+                                html += '</div>';
+                            } else {
+                                html += '<p class="text-gray-500 text-sm mt-2">No metafields were set.</p>';
+                            }
+                            html += '</div>';
+                        } else if (conversationType === 'recharge') {
+                            const updates = data.subscription_updates || {};
+                            const updatesList = data.updates_list || [];
+                            const summary = data.summary || {};
+                            
+                            html = '<div class="bg-purple-50 border border-purple-200 rounded-lg p-4">';
+                            html += '<p class="text-sm font-semibold text-gray-800 mb-2">' + (summary.message || 'Subscription updates calculated') + '</p>';
+                            
+                            if (updatesList.length > 0) {
+                                html += '<div class="mt-3 space-y-2">';
+                                updatesList.forEach(update => {
+                                    html += '<div class="bg-white border border-gray-200 rounded p-2">';
+                                    html += '<p class="text-xs font-semibold text-gray-600">' + update.field.replace(/</g, '&lt;') + '</p>';
+                                    html += '<p class="text-sm text-gray-800 mt-1">' + String(update.value || '').replace(/</g, '&lt;') + '</p>';
+                                    html += '</div>';
+                                });
+                                html += '</div>';
+                            } else {
+                                html += '<p class="text-gray-500 text-sm mt-2">No subscription updates were set.</p>';
+                            }
+                            html += '</div>';
                         }
+                        
                         testOrderResults.innerHTML = html;
                     } else {
                         testOrderResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">' + (data.error || 'Error') + '</div>';
