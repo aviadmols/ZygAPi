@@ -414,5 +414,16 @@
                 }
             });
         }
+
+        // Copy suggested prompt to prompt input
+        window.copySuggestedPrompt = function() {
+            const suggestedPrompt = document.getElementById('suggested-prompt-text');
+            const promptInput = document.getElementById('prompt-input');
+            if (suggestedPrompt && promptInput) {
+                promptInput.value = suggestedPrompt.value;
+                promptInput.focus();
+                alert('Prompt copied! You can now use "Generate PHP" with the improved prompt.');
+            }
+        };
     </script>
 </x-app-layout>

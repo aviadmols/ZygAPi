@@ -594,7 +594,14 @@ class AiConversationController extends Controller
         ]);
 
         try {
-            $systemPrompt = "You are an expert at debugging PHP code for Shopify order processing (tags, metafields, or Recharge subscriptions).
+            $conversationType = $aiConversation->type ?? 'tags';
+            $typeContext = $conversationType === 'metafields' 
+                ? 'Shopify order metafields' 
+                : ($conversationType === 'recharge' 
+                    ? 'Recharge subscription updates' 
+                    : 'Shopify order tags');
+
+            $systemPrompt = "You are an expert at debugging PHP code for {$typeContext} in Zyg Automations.
 
 Analyze the provided test log, PHP code, and user prompt. Identify any issues, errors, or potential improvements.
 
@@ -602,8 +609,15 @@ Provide your analysis in JSON format:
 {
   \"issues\": [\"issue1\", \"issue2\"],
   \"recommendations\": [\"recommendation1\", \"recommendation2\"],
-  \"suggested_fixes\": \"suggested PHP code fix or explanation\"
+  \"suggested_fixes\": \"suggested PHP code fix or explanation\",
+  \"suggested_prompt\": \"improved user prompt that addresses the issues and can be used to regenerate the code\"
 }
+
+The suggested_prompt should be a clear, improved version of the original prompt that:
+- Addresses all identified issues
+- Includes specific requirements and conditions
+- Is ready to use for generating new PHP code
+- Is written in English
 
 Be specific and actionable. Focus on:
 - Syntax errors
@@ -657,6 +671,7 @@ Be specific and actionable. Focus on:
                 'issues' => $result['issues'] ?? [],
                 'recommendations' => $result['recommendations'] ?? [],
                 'suggested_fixes' => $result['suggested_fixes'] ?? '',
+                'suggested_prompt' => $result['suggested_prompt'] ?? '',
                 'raw' => false,
             ]);
         } catch (\Throwable $e) {
