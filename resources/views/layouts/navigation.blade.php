@@ -7,7 +7,7 @@
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="flex items-center space-x-3">
                         <img src="{{ asset('zyg-logo.png') }}" alt="ZYG" class="h-10 w-auto">
-                        <span class="font-semibold text-xl text-gray-800">ZYG</span>
+    
                     </a>
                 </div>
 
