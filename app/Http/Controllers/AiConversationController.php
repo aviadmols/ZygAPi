@@ -356,28 +356,6 @@ class AiConversationController extends Controller
                 $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
                 $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
                 
-                // Intercept HTTP calls to Recharge API during eval
-                $originalHttpPut = null;
-                if ($rechargeAccessToken && preg_match('/api\.rechargeapps\.com/i', $phpCode)) {
-                    // Wrap Http::put to log PUT requests
-                    \Illuminate\Support\Facades\Http::macro('putRecharge', function($url, $data = []) use ($rechargeAccessToken, &$apiLogs) {
-                        $response = \Illuminate\Support\Facades\Http::withHeaders([
-                            'X-Recharge-Access-Token' => $rechargeAccessToken,
-                            'Content-Type' => 'application/json',
-                        ])->put($url, $data);
-                        
-                        $apiLogs['recharge_calls'][] = [
-                            'url' => $url,
-                            'method' => 'PUT',
-                            'request_body' => $data,
-                            'status' => $response->status(),
-                            'response' => $response->json(),
-                        ];
-                        
-                        return $response;
-                    });
-                }
-                
                 try {
                     eval($codeToEval);
                 } catch (\Throwable $e) {
@@ -385,7 +363,24 @@ class AiConversationController extends Controller
                     throw new \Exception("PHP execution error: " . $e->getMessage());
                 }
                 
-                // Also check if code would make PUT calls (by checking subscriptionUpdates)
+                // Check if code contains PUT requests to Recharge API
+                if ($rechargeAccessToken && preg_match('/->put\(/i', $phpCode)) {
+                    // Extract PUT URLs from code
+                    preg_match_all('/->put\([\'"]([^\'"]+)[\'"]/i', $phpCode, $putMatches);
+                    if (!empty($putMatches[1])) {
+                        foreach ($putMatches[1] as $putUrl) {
+                            if (strpos($putUrl, 'api.rechargeapps.com') !== false) {
+                                $apiLogs['recharge_calls'][] = [
+                                    'url' => $putUrl,
+                                    'method' => 'PUT',
+                                    'note' => 'PUT request detected in generated code',
+                                ];
+                            }
+                        }
+                    }
+                }
+                
+                // Also log what PUT calls would be made based on subscriptionUpdates
                 if (!empty($subscriptionUpdates) && $rechargeAccessToken) {
                     // Try to get subscription IDs first
                     try {
@@ -398,11 +393,11 @@ class AiConversationController extends Controller
                         if ($getResponse->successful()) {
                             $subsData = $getResponse->json();
                             $subs = $subsData['subscriptions'] ?? [];
-                            foreach (array_slice($subs, 0, 3) as $sub) { // Test PUT on first 3 subscriptions
+                            foreach (array_slice($subs, 0, 3) as $sub) { // Log PUT for first 3 subscriptions
                                 $subId = $sub['id'] ?? null;
                                 if ($subId) {
                                     $putUrl = "https://api.rechargeapps.com/subscriptions/{$subId}";
-                                    // Don't actually PUT, just log what would be sent
+                                    // Log what PUT call would be made
                                     $apiLogs['recharge_calls'][] = [
                                         'url' => $putUrl,
                                         'method' => 'PUT',
