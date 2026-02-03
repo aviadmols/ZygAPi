@@ -234,14 +234,35 @@ class AiConversationController extends Controller
                 
                 $metafieldsResult = $metafields ?? [];
                 $metafieldsList = [];
-                foreach ($metafieldsResult as $namespace => $keys) {
-                    if (is_array($keys)) {
-                        foreach ($keys as $key => $value) {
+                foreach ($metafieldsResult as $key => $value) {
+                    // Support both formats: $metafields['namespace']['key'] and $metafields['namespace.key']
+                    if (is_array($value)) {
+                        // Format: $metafields['namespace']['key'] = value
+                        foreach ($value as $subKey => $subValue) {
+                            $metafieldsList[] = [
+                                'namespace' => $key,
+                                'key' => $subKey,
+                                'value' => $subValue,
+                                'full_key' => "{$key}.{$subKey}",
+                            ];
+                        }
+                    } else {
+                        // Format: $metafields['namespace.key'] = value
+                        if (strpos($key, '.') !== false) {
+                            list($namespace, $metaKey) = explode('.', $key, 2);
                             $metafieldsList[] = [
                                 'namespace' => $namespace,
+                                'key' => $metaKey,
+                                'value' => $value,
+                                'full_key' => $key,
+                            ];
+                        } else {
+                            // Fallback: treat as key without namespace
+                            $metafieldsList[] = [
+                                'namespace' => 'custom',
                                 'key' => $key,
                                 'value' => $value,
-                                'full_key' => "{$namespace}.{$key}",
+                                'full_key' => "custom.{$key}",
                             ];
                         }
                     }
