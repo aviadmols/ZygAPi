@@ -53,13 +53,11 @@ class AiConversationController extends Controller
     {
         $validated = $request->validate([
             'store_id' => 'required|exists:stores,id',
-            'type' => 'required|in:tags,metafields,recharge',
         ]);
 
         $conversation = AiConversation::create([
             'store_id' => $validated['store_id'],
             'user_id' => auth()->id(),
-            'type' => $validated['type'],
             'messages' => [],
         ]);
 
@@ -72,43 +70,8 @@ class AiConversationController extends Controller
      */
     public function show(AiConversation $aiConversation): View
     {
-        try {
-            // Ensure type is set (will use default from model if column doesn't exist)
-            $type = $aiConversation->getAttribute('type') ?? 'tags';
-            $aiConversation->setAttribute('type', $type);
-            
-            // Try to save if column exists, but don't fail if it doesn't
-            if (AiConversation::typeColumnExists() && empty($aiConversation->getOriginal('type'))) {
-                try {
-                    $aiConversation->type = 'tags';
-                    $aiConversation->saveQuietly();
-                } catch (\Throwable $e) {
-                    // Column might not exist, ignore
-                    Log::debug('Could not save type field', ['error' => $e->getMessage()]);
-                }
-            }
-            
-            $aiConversation->load('store', 'user', 'generatedRule');
-            return view('ai-conversations.show', compact('aiConversation'));
-        } catch (\Throwable $e) {
-            Log::error('AiConversationController::show error', [
-                'conversation_id' => $aiConversation->id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            
-            // Fallback: ensure type is set and try again
-            try {
-                $aiConversation->setAttribute('type', 'tags');
-                $aiConversation->load('store', 'user', 'generatedRule');
-                return view('ai-conversations.show', compact('aiConversation'));
-            } catch (\Throwable $e2) {
-                Log::error('AiConversationController::show fallback error', [
-                    'error' => $e2->getMessage(),
-                ]);
-                throw $e;
-            }
-        }
+        $aiConversation->load('store', 'user', 'generatedRule');
+        return view('ai-conversations.show', compact('aiConversation'));
     }
 
     /**
@@ -237,59 +200,27 @@ class AiConversationController extends Controller
                     }
                 }
 
-                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements, $aiConversation->type ?? 'tags');
+                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements);
                 $phpCode = $result['php_code'];
                 Log::info('[AI Conversation] TEST_ORDER step: PHP generated', ['php_code_length' => strlen($phpCode)]);
             } else {
                 Log::info('[AI Conversation] TEST_ORDER step: using provided php_code', ['php_code_length' => strlen($phpCode)]);
             }
 
-            // Execute based on conversation type
-            $conversationType = $aiConversation->type ?? 'tags';
-            if ($conversationType === 'tags') {
-                $taggingEngine = new TaggingEngineService();
-                $result = $taggingEngine->executePhpRule($phpCode, $order, $store);
-                Log::info('[AI Conversation] TEST_ORDER response', [
-                    'conversation_id' => $aiConversation->id,
-                    'success' => true,
-                    'tags_count' => count($result),
-                    'tags' => $result,
-                ]);
+            $taggingEngine = new TaggingEngineService();
+            $tags = $taggingEngine->executePhpRule($phpCode, $order, $store);
+            Log::info('[AI Conversation] TEST_ORDER response', [
+                'conversation_id' => $aiConversation->id,
+                'success' => true,
+                'tags_count' => count($tags),
+                'tags' => $tags,
+            ]);
 
-                return response()->json([
-                    'success' => true,
-                    'tags' => $result,
-                    'php_code' => $phpCode,
-                ]);
-            } elseif ($conversationType === 'metafields') {
-                $metafieldsService = new \App\Services\MetafieldsExecutionService();
-                $metafields = $metafieldsService->executePhpRule($phpCode, $order, $store);
-                Log::info('[AI Conversation] TEST_ORDER response (metafields)', [
-                    'conversation_id' => $aiConversation->id,
-                    'success' => true,
-                    'metafields' => $metafields,
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'metafields' => $metafields,
-                    'php_code' => $phpCode,
-                ]);
-            } elseif ($conversationType === 'recharge') {
-                $rechargeService = new \App\Services\RechargeExecutionService();
-                $subscriptionUpdates = $rechargeService->executePhpRule($phpCode, $order, $store);
-                Log::info('[AI Conversation] TEST_ORDER response (recharge)', [
-                    'conversation_id' => $aiConversation->id,
-                    'success' => true,
-                    'subscription_updates' => $subscriptionUpdates,
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'subscription_updates' => $subscriptionUpdates,
-                    'php_code' => $phpCode,
-                ]);
-            }
+            return response()->json([
+                'success' => true,
+                'tags' => $tags,
+                'php_code' => $phpCode,
+            ]);
         } catch (\Throwable $e) {
             Log::warning('[AI Conversation] TEST_ORDER response ERROR', [
                 'conversation_id' => $aiConversation->id,
@@ -353,7 +284,7 @@ class AiConversationController extends Controller
         }
 
         try {
-            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type ?? 'tags');
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
             return response()->json([
                 'success' => true,
                 'php_code' => $result['php_code'],
@@ -386,14 +317,6 @@ class AiConversationController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Validation failed: ' . implode(' ', $e->validator->errors()->all()),
-            ], 422);
-        }
-
-        // Only allow saving for 'tags' type
-        if (($aiConversation->type ?? 'tags') !== 'tags') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Saving rules is only available for Tags type. For Metafields and Recharge, use the Test functionality.',
             ], 422);
         }
 
@@ -490,15 +413,7 @@ class AiConversationController extends Controller
         ]);
 
         try {
-            // Only create TaggingRule for 'tags' type
-            if ($aiConversation->type !== 'tags') {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Saving rules is only available for Tags type. For Metafields and Recharge, use the Test functionality.',
-                ], 422);
-            }
-
-            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type ?? 'tags');
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
             $phpCode = $result['php_code'];
 
             // Generate rule name and description using AI

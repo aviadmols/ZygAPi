@@ -11,8 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Update existing records that have NULL type to 'tags'
-        \DB::table('ai_conversations')->whereNull('type')->update(['type' => 'tags']);
+        //
     }
 
     /**
@@ -20,6 +19,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // No need to reverse - we're just updating data
+        //
     }
 };

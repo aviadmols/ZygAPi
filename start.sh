@@ -7,10 +7,6 @@ echo "=== Shopify Tags System - Auto Setup ==="
 echo "Running database migrations..."
 php artisan migrate --force --no-interaction || echo "Migration failed - check DB connection. Starting anyway..."
 
-# Ensure all existing AI conversations have type field set (if column exists)
-echo "Updating existing AI conversations..."
-php artisan db:seed --class=UpdateAiConversationsTypeSeeder --force 2>/dev/null || echo "Could not update existing conversations - continuing..."
-
 # Seed default AI prompt if missing
 php artisan db:seed --class=PromptTemplateSeeder --force 2>/dev/null || true
 

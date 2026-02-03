@@ -18,7 +18,6 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Messages</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rule Generated</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -29,18 +28,6 @@
                             @forelse($conversations as $conversation)
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $conversation->store->name }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        @php
-                                            $type = $conversation->type ?? 'tags';
-                                            $typeColors = [
-                                                'tags' => 'bg-blue-100 text-blue-800',
-                                                'metafields' => 'bg-purple-100 text-purple-800',
-                                                'recharge' => 'bg-green-100 text-green-800'
-                                            ];
-                                            $color = $typeColors[$type] ?? 'bg-gray-100 text-gray-800';
-                                        @endphp
-                                        <span class="px-2 py-1 rounded text-xs font-semibold {{ $color }}">{{ ucfirst($type) }}</span>
-                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ count($conversation->messages ?? []) }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if($conversation->generatedRule)
@@ -61,7 +48,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">No conversations</td>
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No conversations</td>
                                 </tr>
                             @endforelse
                         </tbody>
