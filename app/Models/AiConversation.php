@@ -19,6 +19,22 @@ class AiConversation extends Model
         'type' => 'tags',
     ];
 
+    /**
+     * Get the value of an attribute, with fallback for missing columns
+     */
+    public function getAttribute($key)
+    {
+        try {
+            return parent::getAttribute($key);
+        } catch (\Throwable $e) {
+            // If column doesn't exist, return default for 'type'
+            if ($key === 'type') {
+                return 'tags';
+            }
+            throw $e;
+        }
+    }
+
     protected $casts = [
         'messages' => 'array',
     ];

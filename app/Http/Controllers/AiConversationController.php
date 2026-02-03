@@ -73,10 +73,22 @@ class AiConversationController extends Controller
     public function show(AiConversation $aiConversation): View
     {
         try {
-            // Ensure type field exists, set default if not
-            if (empty($aiConversation->type)) {
-                $aiConversation->type = 'tags';
-                $aiConversation->save();
+            // Check if type column exists in database, if not set default
+            try {
+                $type = $aiConversation->getAttribute('type');
+                if (empty($type)) {
+                    $aiConversation->type = 'tags';
+                    // Only save if column exists
+                    try {
+                        $aiConversation->save();
+                    } catch (\Throwable $e) {
+                        // Column might not exist, use default without saving
+                        $aiConversation->setAttribute('type', 'tags');
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Column doesn't exist, set default in memory only
+                $aiConversation->setAttribute('type', 'tags');
             }
             
             $aiConversation->load('store', 'user', 'generatedRule');
@@ -87,7 +99,18 @@ class AiConversationController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            throw $e;
+            
+            // Fallback: try to load without type
+            try {
+                $aiConversation->setAttribute('type', 'tags');
+                $aiConversation->load('store', 'user', 'generatedRule');
+                return view('ai-conversations.show', compact('aiConversation'));
+            } catch (\Throwable $e2) {
+                Log::error('AiConversationController::show fallback error', [
+                    'error' => $e2->getMessage(),
+                ]);
+                throw $e;
+            }
         }
     }
 
