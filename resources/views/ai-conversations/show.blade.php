@@ -399,6 +399,17 @@
                                 html += '<pre class="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">' + String(data.suggested_fixes).replace(/</g, '&lt;') + '</pre>';
                                 html += '</div>';
                             }
+                            
+                            if (data.suggested_prompt) {
+                                html += '<div class="mb-3">';
+                                html += '<div class="flex items-center justify-between mb-2">';
+                                html += '<p class="text-sm font-semibold text-purple-700">Improved Prompt:</p>';
+                                html += '<button type="button" onclick="copySuggestedPrompt()" class="text-xs bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded">Copy & Use</button>';
+                                html += '</div>';
+                                html += '<textarea id="suggested-prompt-text" readonly class="w-full bg-gray-50 border border-gray-300 rounded p-3 text-sm font-mono" rows="4">' + String(data.suggested_prompt).replace(/</g, '&lt;') + '</textarea>';
+                                html += '<p class="text-xs text-gray-500 mt-1">Copy this improved prompt and use it in the Generate PHP section above.</p>';
+                                html += '</div>';
+                            }
                         }
                         
                         html += '</div>';
