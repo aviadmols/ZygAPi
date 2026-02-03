@@ -222,7 +222,15 @@ class AiConversationController extends Controller
                 $metafields = [];
                 $shopDomain = $store->shopify_store_url;
                 $accessToken = $store->shopify_access_token;
-                eval($phpCode);
+                // Remove <?php tag if present for eval()
+                $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
+                $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
+                try {
+                    eval($codeToEval);
+                } catch (\Throwable $e) {
+                    Log::error('Metafields PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
+                    throw new \Exception("PHP execution error: " . $e->getMessage());
+                }
                 return response()->json([
                     'success' => true,
                     'metafields' => $metafields ?? [],
@@ -233,7 +241,15 @@ class AiConversationController extends Controller
                 $shopDomain = $store->shopify_store_url;
                 $accessToken = $store->shopify_access_token;
                 $rechargeAccessToken = $store->recharge_access_token ?? '';
-                eval($phpCode);
+                // Remove <?php tag if present for eval()
+                $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
+                $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
+                try {
+                    eval($codeToEval);
+                } catch (\Throwable $e) {
+                    Log::error('Recharge PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
+                    throw new \Exception("PHP execution error: " . $e->getMessage());
+                }
                 return response()->json([
                     'success' => true,
                     'subscription_updates' => $subscriptionUpdates ?? [],
