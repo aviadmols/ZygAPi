@@ -72,8 +72,23 @@ class AiConversationController extends Controller
      */
     public function show(AiConversation $aiConversation): View
     {
-        $aiConversation->load('store', 'user', 'generatedRule');
-        return view('ai-conversations.show', compact('aiConversation'));
+        try {
+            // Ensure type field exists, set default if not
+            if (empty($aiConversation->type)) {
+                $aiConversation->type = 'tags';
+                $aiConversation->save();
+            }
+            
+            $aiConversation->load('store', 'user', 'generatedRule');
+            return view('ai-conversations.show', compact('aiConversation'));
+        } catch (\Throwable $e) {
+            Log::error('AiConversationController::show error', [
+                'conversation_id' => $aiConversation->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
     }
 
     /**
