@@ -231,9 +231,33 @@ class AiConversationController extends Controller
                     Log::error('Metafields PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
                     throw new \Exception("PHP execution error: " . $e->getMessage());
                 }
+                
+                $metafieldsResult = $metafields ?? [];
+                $metafieldsList = [];
+                foreach ($metafieldsResult as $namespace => $keys) {
+                    if (is_array($keys)) {
+                        foreach ($keys as $key => $value) {
+                            $metafieldsList[] = [
+                                'namespace' => $namespace,
+                                'key' => $key,
+                                'value' => $value,
+                                'full_key' => "{$namespace}.{$key}",
+                            ];
+                        }
+                    }
+                }
+                
                 return response()->json([
                     'success' => true,
-                    'metafields' => $metafields ?? [],
+                    'metafields' => $metafieldsResult,
+                    'metafields_list' => $metafieldsList,
+                    'summary' => [
+                        'total_metafields' => count($metafieldsList),
+                        'namespaces' => array_keys($metafieldsResult),
+                        'message' => count($metafieldsList) > 0 
+                            ? 'Metafields calculated successfully. ' . count($metafieldsList) . ' metafield(s) would be updated.'
+                            : 'No metafields were set by the code.',
+                    ],
                     'php_code' => $phpCode,
                 ]);
             } elseif ($type === 'recharge') {
@@ -250,9 +274,27 @@ class AiConversationController extends Controller
                     Log::error('Recharge PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
                     throw new \Exception("PHP execution error: " . $e->getMessage());
                 }
+                
+                $updatesResult = $subscriptionUpdates ?? [];
+                $updatesList = [];
+                foreach ($updatesResult as $field => $value) {
+                    $updatesList[] = [
+                        'field' => $field,
+                        'value' => $value,
+                    ];
+                }
+                
                 return response()->json([
                     'success' => true,
-                    'subscription_updates' => $subscriptionUpdates ?? [],
+                    'subscription_updates' => $updatesResult,
+                    'updates_list' => $updatesList,
+                    'summary' => [
+                        'total_updates' => count($updatesList),
+                        'fields' => array_keys($updatesResult),
+                        'message' => count($updatesList) > 0 
+                            ? 'Subscription updates calculated successfully. ' . count($updatesList) . ' field(s) would be updated.'
+                            : 'No subscription updates were set by the code.',
+                    ],
                     'php_code' => $phpCode,
                 ]);
             }
