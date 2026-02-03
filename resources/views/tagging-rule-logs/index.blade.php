@@ -15,6 +15,7 @@
 
                     <form method="get" class="flex flex-wrap gap-4 mb-6">
                         <input type="hidden" name="endpoint_id" value="{{ request('endpoint_id') }}">
+                        <input type="hidden" name="endpoint_order_id" value="{{ request('endpoint_order_id') }}">
                         <div>
                             <label for="rule_id" class="block text-xs font-medium text-gray-500">Rule</label>
                             <select name="rule_id" id="rule_id" class="mt-1 rounded-md border-gray-300 text-sm">
@@ -116,6 +117,10 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div>
+                            <label for="endpoint_order_id" class="block text-xs font-medium text-gray-500">Order ID</label>
+                            <input type="text" name="endpoint_order_id" id="endpoint_order_id" value="{{ request('endpoint_order_id') }}" placeholder="e.g. 6426288947455" class="mt-1 rounded-md border-gray-300 text-sm w-48">
+                        </div>
                         <div class="flex items-end">
                             <button type="submit" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded text-sm">Filter</button>
                         </div>
@@ -126,6 +131,7 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Endpoint</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Request input</th>
@@ -137,6 +143,7 @@
                                 @forelse($customEndpointLogs as $log)
                                     <tr>
                                         <td class="px-4 py-2 text-sm text-gray-600 whitespace-nowrap">{{ $log->created_at->format('Y-m-d H:i:s') }}</td>
+                                        <td class="px-4 py-2 text-sm font-mono">{{ $log->request_input['order_id'] ?? '—' }}</td>
                                         <td class="px-4 py-2 text-sm">{{ $log->customEndpoint->name ?? '—' }} <span class="text-gray-400 text-xs">({{ $log->customEndpoint->store->name ?? '' }})</span></td>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-0.5 rounded text-xs {{ ($log->source ?? 'webhook') === 'webhook' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700' }}">{{ $log->source ?? 'webhook' }}</span></td>
                                         <td class="px-4 py-2 text-sm max-w-xs">
@@ -166,7 +173,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-gray-500 text-sm">No custom endpoint logs yet. Call an endpoint via webhook or test to see entries here.</td>
+                                        <td colspan="7" class="px-4 py-8 text-center text-gray-500 text-sm">No custom endpoint logs yet. Call an endpoint via webhook or test to see entries here.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

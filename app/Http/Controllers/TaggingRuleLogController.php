@@ -32,6 +32,9 @@ class TaggingRuleLogController extends Controller
         if ($request->filled('endpoint_id')) {
             $customEndpointLogsQuery->where('custom_endpoint_id', $request->endpoint_id);
         }
+        if ($request->filled('endpoint_order_id')) {
+            $customEndpointLogsQuery->where('request_input->order_id', $request->endpoint_order_id);
+        }
 
         $customEndpointLogs = $customEndpointLogsQuery->paginate(50, ['*'], 'endpoint_page');
 
