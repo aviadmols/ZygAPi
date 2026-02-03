@@ -176,7 +176,8 @@
                     
                     if (data.success) {
                         nameInput.value = data.name;
-                        descriptionTextarea.value = data.description;
+                        // Replace \n with actual newlines for proper display in textarea
+                        descriptionTextarea.value = data.description.replace(/\\n/g, '\n');
                         alert('Name and description generated successfully!');
                     } else {
                         alert('Error: ' + (data.error || 'Failed to generate name and description'));

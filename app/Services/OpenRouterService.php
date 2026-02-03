@@ -150,11 +150,11 @@ class OpenRouterService
 
 Given the user's requirements for a tagging rule, generate:
 1. A concise, descriptive rule name (max 60 characters) that clearly indicates what the rule does
-2. A detailed description (2-4 sentences) explaining what conditions the rule checks and what tags it applies
+2. A detailed description in bullet point format explaining what the rule does
 
 The name should be in English, use title case, and be specific (e.g., 'Subscription Orders with High LTV', 'Box Size Based on Days and Gram', 'Customer Order Count Tagging').
 
-The description should explain:
+The description should be formatted as bullet points (using • or -), with each action/condition on a separate line. Include:
 - What conditions or criteria the rule evaluates
 - What tags are applied and when
 - Any special logic or considerations
@@ -162,7 +162,7 @@ The description should explain:
 Return ONLY valid JSON in this exact structure (no markdown, no extra text):
 {
   \"name\": \"Rule Name Here\",
-  \"description\": \"Detailed description of what the rule does, what conditions it checks, and what tags it applies.\"
+  \"description\": \"• First action or condition\\n• Second action or condition\\n• Third action or condition\"
 }";
 
         $userPrompt = "User Requirements:\n" . $userRequirements;
@@ -222,11 +222,11 @@ Return ONLY valid JSON in this exact structure (no markdown, no extra text):
 
 Given PHP code or JSON rules for a tagging rule, analyze what the code does and generate:
 1. A concise, descriptive rule name (max 60 characters) that clearly indicates what the rule does
-2. A detailed description (2-4 sentences) explaining what conditions the rule checks and what tags it applies
+2. A detailed description in bullet point format explaining what the rule does
 
 The name should be in English, use title case, and be specific (e.g., 'Subscription Orders with High LTV', 'Box Size Based on Days and Gram', 'Customer Order Count Tagging').
 
-The description should explain:
+The description should be formatted as bullet points (using • or -), with each action/condition on a separate line. Include:
 - What conditions or criteria the rule evaluates
 - What tags are applied and when
 - Any special logic or considerations
@@ -234,7 +234,7 @@ The description should explain:
 Return ONLY valid JSON in this exact structure (no markdown, no extra text):
 {
   \"name\": \"Rule Name Here\",
-  \"description\": \"Detailed description of what the rule does, what conditions it checks, and what tags it applies.\"
+  \"description\": \"• First action or condition\\n• Second action or condition\\n• Third action or condition\"
 }";
 
         $codeDescription = '';
