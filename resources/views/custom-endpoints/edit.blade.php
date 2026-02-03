@@ -33,10 +33,7 @@
                                 <option value="recharge" {{ $customEndpoint->platform === 'recharge' ? 'selected' : '' }}>Recharge</option>
                             </select>
                         </div>
-                        <div class="mb-4">
-                            <label for="prompt" class="block text-sm font-medium text-gray-700">Prompt</label>
-                            <textarea name="prompt" id="prompt" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('prompt', $customEndpoint->prompt) }}</textarea>
-                        </div>
+                        <input type="hidden" name="prompt" value="{{ old('prompt', $customEndpoint->prompt) }}">
                         <div class="mb-4">
                             <label for="php_code" class="block text-sm font-medium text-gray-700">PHP code</label>
                             <textarea name="php_code" id="php_code" rows="14" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">{{ old('php_code', $customEndpoint->php_code) }}</textarea>

@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::post('custom-endpoints/generate', [\App\Http\Controllers\CustomEndpointController::class, 'generate'])->name('custom-endpoints.generate');
     Route::post('custom-endpoints', [\App\Http\Controllers\CustomEndpointController::class, 'store'])->name('custom-endpoints.store');
     Route::get('custom-endpoints/{custom_endpoint}', [\App\Http\Controllers\CustomEndpointController::class, 'show'])->name('custom-endpoints.show');
+    Route::post('custom-endpoints/{custom_endpoint}/test', [\App\Http\Controllers\CustomEndpointController::class, 'test'])->name('custom-endpoints.test');
     Route::get('custom-endpoints/{custom_endpoint}/edit', [\App\Http\Controllers\CustomEndpointController::class, 'edit'])->name('custom-endpoints.edit');
     Route::put('custom-endpoints/{custom_endpoint}', [\App\Http\Controllers\CustomEndpointController::class, 'update'])->name('custom-endpoints.update');
     Route::delete('custom-endpoints/{custom_endpoint}', [\App\Http\Controllers\CustomEndpointController::class, 'destroy'])->name('custom-endpoints.destroy');

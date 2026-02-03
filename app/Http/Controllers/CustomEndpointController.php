@@ -131,6 +131,48 @@ class CustomEndpointController extends Controller
     }
 
     /**
+     * Test endpoint from dashboard: run with given input and return response + detailed log.
+     */
+    public function test(Request $request, CustomEndpoint $customEndpoint): JsonResponse
+    {
+        $input = $request->input('input', $request->all());
+        if (is_string($input)) {
+            $input = json_decode($input, true) ?: [];
+        }
+        $log = [];
+        $log[] = ['step' => 'Request received', 'input' => $input, 'timestamp' => now()->toIso8601String()];
+
+        $store = $customEndpoint->store;
+        $shopDomain = $store->shopify_store_url ?? '';
+        $accessToken = $store->shopify_access_token ?? '';
+        $rechargeAccessToken = $store->recharge_access_token ?? '';
+
+        $code = preg_replace('/^<\?php\s*/i', '', trim($customEndpoint->php_code ?? ''));
+        $code = preg_replace('/\?>\s*$/i', '', $code);
+
+        $response = [];
+        $start = microtime(true);
+        try {
+            eval($code);
+            $log[] = ['step' => 'Code executed successfully', 'duration_ms' => round((microtime(true) - $start) * 1000)];
+            $log[] = ['step' => 'Response', 'response' => $response];
+            return response()->json([
+                'success' => true,
+                'response' => $response,
+                'log' => $log,
+            ]);
+        } catch (\Throwable $e) {
+            $log[] = ['step' => 'Error', 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'duration_ms' => round((microtime(true) - $start) * 1000)];
+            Log::error('CustomEndpoint test error', ['id' => $customEndpoint->id, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'log' => $log,
+            ], 500);
+        }
+    }
+
+    /**
      * Execute custom endpoint (webhook). Auth: X-Webhook-Token header or ?token=.
      */
     public function execute(Request $request, string $slug): JsonResponse
