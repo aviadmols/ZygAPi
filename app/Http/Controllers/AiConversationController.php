@@ -155,12 +155,21 @@ class AiConversationController extends Controller
      */
     public function testOrder(Request $request, AiConversation $aiConversation): JsonResponse
     {
+        $type = $aiConversation->type ?? 'tags';
+        
         try {
-            $validated = $request->validate([
-                'order_id' => 'required|string',
-                'order_data' => 'nullable|string',
-                'php_code' => 'nullable|string',
-            ]);
+            if ($type === 'recharge') {
+                $validated = $request->validate([
+                    'subscription_id' => 'required|string',
+                    'php_code' => 'nullable|string',
+                ]);
+            } else {
+                $validated = $request->validate([
+                    'order_id' => 'required|string',
+                    'order_data' => 'nullable|string',
+                    'php_code' => 'nullable|string',
+                ]);
+            }
         } catch (ValidationException $e) {
             Log::warning('[AI Conversation] TEST_ORDER validation failed', ['conversation_id' => $aiConversation->id, 'error' => $e->getMessage()]);
             return response()->json([
@@ -171,17 +180,120 @@ class AiConversationController extends Controller
 
         Log::info('[AI Conversation] TEST_ORDER request', [
             'conversation_id' => $aiConversation->id,
-            'order_id' => $validated['order_id'],
-            'has_order_data' => !empty($validated['order_data']),
+            'type' => $type,
+            'order_id' => $validated['order_id'] ?? null,
+            'subscription_id' => $validated['subscription_id'] ?? null,
+            'has_order_data' => !empty($validated['order_data'] ?? null),
             'has_php_code' => !empty(trim($validated['php_code'] ?? '')),
         ]);
 
         try {
             $store = $aiConversation->store;
-            $shopifyService = new ShopifyService($store);
-            $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
-            $orderId = $order['id'] ?? $validated['order_id'];
-            Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $orderId]);
+            
+            if ($type === 'recharge') {
+                // For recharge, fetch subscription from Recharge API
+                $subscriptionId = $validated['subscription_id'];
+                $rechargeAccessToken = $store->recharge_access_token ?? '';
+                
+                if (!$rechargeAccessToken) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Recharge access token not configured for this store.',
+                    ], 422);
+                }
+                
+                try {
+                    $subscriptionUrl = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
+                    $subscriptionResponse = \Illuminate\Support\Facades\Http::withHeaders([
+                        'X-Recharge-Access-Token' => $rechargeAccessToken,
+                        'Content-Type' => 'application/json',
+                    ])->get($subscriptionUrl);
+                    
+                    if ($subscriptionResponse->failed()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Failed to fetch subscription from Recharge API: ' . $subscriptionResponse->status(),
+                        ], 422);
+                    }
+                    
+                    $subscription = $subscriptionResponse->json()['subscription'] ?? null;
+                    if (!$subscription) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Subscription not found in Recharge API response.',
+                        ], 422);
+                    }
+                    
+                    Log::info('[AI Conversation] TEST_ORDER step: subscription fetched', ['subscription_id' => $subscriptionId]);
+                    
+                    // Create a mock order structure from subscription for compatibility
+                    $order = [
+                        'id' => $subscription['shopify_order_id'] ?? $subscriptionId,
+                        'name' => $subscription['order_name'] ?? null,
+                        'customer' => [
+                            'id' => $subscription['customer_id'] ?? null,
+                            'email' => $subscription['email'] ?? null,
+                        ],
+                        'line_items' => [],
+                        'tags' => '',
+                        'created_at' => $subscription['created_at'] ?? null,
+                    ];
+                    $orderId = $subscription['shopify_order_id'] ?? $subscriptionId;
+                    
+                    // Collect API call logs
+                    $apiLogs = [
+                        'recharge_subscription' => [
+                            'subscription_id' => $subscriptionId,
+                            'status' => $subscription['status'] ?? null,
+                            'next_charge_scheduled_at' => $subscription['next_charge_scheduled_at'] ?? null,
+                            'next_order_scheduled_at' => $subscription['next_order_scheduled_at'] ?? null,
+                            'quantity' => $subscription['quantity'] ?? null,
+                            'shopify_order_id' => $subscription['shopify_order_id'] ?? null,
+                        ],
+                        'recharge_calls' => [
+                            [
+                                'url' => $subscriptionUrl,
+                                'method' => 'GET',
+                                'status' => $subscriptionResponse->status(),
+                            ]
+                        ],
+                    ];
+                } catch (\Throwable $e) {
+                    Log::error('[AI Conversation] TEST_ORDER: Failed to fetch subscription', ['error' => $e->getMessage()]);
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Failed to fetch subscription: ' . $e->getMessage(),
+                    ], 422);
+                }
+            } else {
+                // For tags/metafields, fetch order from Shopify
+                $shopifyService = new ShopifyService($store);
+                $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
+                $orderId = $order['id'] ?? $validated['order_id'];
+                Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $orderId]);
+                
+                // Collect API call logs - only essential information
+                $apiLogs = [
+                    'shopify_order' => [
+                        'order_id' => $orderId,
+                        'order_number' => $order['order_number'] ?? $order['name'] ?? null,
+                        'customer_email' => $order['customer']['email'] ?? null,
+                        'line_items_count' => count($order['line_items'] ?? []),
+                        'line_items_summary' => array_map(function($item) {
+                            return [
+                                'id' => $item['id'] ?? null,
+                                'title' => $item['title'] ?? null,
+                                'sku' => $item['sku'] ?? null,
+                                'quantity' => $item['quantity'] ?? null,
+                                'properties' => $item['properties'] ?? [],
+                            ];
+                        }, array_slice($order['line_items'] ?? [], 0, 5)), // Only first 5 items
+                        'tags' => $order['tags'] ?? null,
+                        'created_at' => $order['created_at'] ?? null,
+                    ],
+                    'recharge_calls' => [],
+                ];
+            }
             
             // Collect API call logs - only essential information
             $apiLogs = [
@@ -217,22 +329,25 @@ class AiConversationController extends Controller
                 }
                 Log::info('[AI Conversation] TEST_ORDER step: user_requirements length', ['length' => strlen($userRequirements)]);
 
-                $orderSample = $order;
-                if (!empty($validated['order_data'])) {
-                    $decoded = json_decode($validated['order_data'], true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $orderSample = $decoded;
+                if ($type === 'recharge') {
+                    // For recharge, use subscription data as sample
+                    $orderSample = $subscription ?? $order;
+                } else {
+                    $orderSample = $order;
+                    if (!empty($validated['order_data'])) {
+                        $decoded = json_decode($validated['order_data'], true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $orderSample = $decoded;
+                        }
                     }
                 }
 
-                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements, $aiConversation->type ?? 'tags');
+                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements, $type);
                 $phpCode = $result['php_code'];
                 Log::info('[AI Conversation] TEST_ORDER step: PHP generated', ['php_code_length' => strlen($phpCode)]);
             } else {
                 Log::info('[AI Conversation] TEST_ORDER step: using provided php_code', ['php_code_length' => strlen($phpCode)]);
             }
-
-            $type = $aiConversation->type ?? 'tags';
             if ($type === 'tags') {
                 $taggingEngine = new TaggingEngineService();
                 $result = $taggingEngine->executePhpRule($phpCode, $order, $store);
@@ -312,51 +427,16 @@ class AiConversationController extends Controller
                 $accessToken = $store->shopify_access_token;
                 $rechargeAccessToken = $store->recharge_access_token ?? '';
                 
-                // Check if code makes Recharge API calls and intercept them
-                if ($rechargeAccessToken && preg_match('/api\.rechargeapps\.com/i', $phpCode)) {
-                    // First, get subscriptions (GET)
-                    try {
-                        $getUrl = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
-                        $getResponse = \Illuminate\Support\Facades\Http::withHeaders([
-                            'X-Recharge-Access-Token' => $rechargeAccessToken,
-                            'Content-Type' => 'application/json',
-                        ])->get($getUrl);
-                        
-                        $responseData = $getResponse->json();
-                        $subscriptions = $responseData['subscriptions'] ?? [];
-                        
-                        // Only log essential subscription info
-                        $subscriptionsSummary = [];
-                        foreach (array_slice($subscriptions, 0, 5) as $sub) { // Only first 5
-                            $subscriptionsSummary[] = [
-                                'id' => $sub['id'] ?? null,
-                                'status' => $sub['status'] ?? null,
-                                'next_charge_scheduled_at' => $sub['next_charge_scheduled_at'] ?? null,
-                                'quantity' => $sub['quantity'] ?? null,
-                            ];
-                        }
-                        
-                        $apiLogs['recharge_calls'][] = [
-                            'url' => $getUrl,
-                            'method' => 'GET',
-                            'status' => $getResponse->status(),
-                            'subscriptions_count' => count($subscriptions),
-                            'subscriptions_summary' => $subscriptionsSummary,
-                        ];
-                    } catch (\Throwable $e) {
-                        $apiLogs['recharge_calls'][] = [
-                            'url' => $getUrl ?? 'N/A',
-                            'method' => 'GET',
-                            'error' => $e->getMessage(),
-                        ];
-                    }
-                }
-                
                 // Remove <?php tag if present for eval()
                 $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
                 $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
                 
+                // Make subscription data available to the eval'd code
+                // $subscription variable is already set from the fetch above
+                // Also make $order available for compatibility (it contains subscription data mapped to order structure)
+                
                 try {
+                    // Execute code with subscription and order data available
                     eval($codeToEval);
                 } catch (\Throwable $e) {
                     Log::error('Recharge PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
@@ -380,36 +460,16 @@ class AiConversationController extends Controller
                     }
                 }
                 
-                // Also log what PUT calls would be made based on subscriptionUpdates
+                // Log what PUT call would be made based on subscriptionUpdates
                 if (!empty($subscriptionUpdates) && $rechargeAccessToken) {
-                    // Try to get subscription IDs first
-                    try {
-                        $getUrl = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
-                        $getResponse = \Illuminate\Support\Facades\Http::withHeaders([
-                            'X-Recharge-Access-Token' => $rechargeAccessToken,
-                            'Content-Type' => 'application/json',
-                        ])->get($getUrl);
-                        
-                        if ($getResponse->successful()) {
-                            $subsData = $getResponse->json();
-                            $subs = $subsData['subscriptions'] ?? [];
-                            foreach (array_slice($subs, 0, 3) as $sub) { // Log PUT for first 3 subscriptions
-                                $subId = $sub['id'] ?? null;
-                                if ($subId) {
-                                    $putUrl = "https://api.rechargeapps.com/subscriptions/{$subId}";
-                                    // Log what PUT call would be made
-                                    $apiLogs['recharge_calls'][] = [
-                                        'url' => $putUrl,
-                                        'method' => 'PUT',
-                                        'request_body' => ['subscription' => $subscriptionUpdates],
-                                        'note' => 'This PUT call would be made with the calculated updates',
-                                    ];
-                                }
-                            }
-                        }
-                    } catch (\Throwable $e) {
-                        // Ignore
-                    }
+                    $putUrl = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
+                    // Log what PUT call would be made
+                    $apiLogs['recharge_calls'][] = [
+                        'url' => $putUrl,
+                        'method' => 'PUT',
+                        'request_body' => ['subscription' => $subscriptionUpdates],
+                        'note' => 'This PUT call would be made with the calculated updates',
+                    ];
                 }
                 
                 $updatesResult = $subscriptionUpdates ?? [];

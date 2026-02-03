@@ -49,10 +49,10 @@
                     <!-- Test -->
                     <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <h3 class="text-sm font-semibold text-gray-800 mb-2">3. Test</h3>
-                        <p class="text-xs text-gray-600 mb-3">Enter an order ID or number. The PHP Rule above will run and show which tags would be applied.</p>
+                        <p class="text-xs text-gray-600 mb-3" id="test-description">Enter an order ID or number. The PHP Rule above will run and show which tags would be applied.</p>
                         <div class="flex flex-wrap items-end gap-4">
                             <div class="flex-1 min-w-[180px]">
-                                <label for="test-order-id" class="block text-sm font-medium text-gray-700 mb-1">Order ID or order number</label>
+                                <label for="test-order-id" class="block text-sm font-medium text-gray-700 mb-1" id="test-label">Order ID or order number</label>
                                 <input type="text" id="test-order-id" placeholder="e.g. 1005 or Shopify order ID"
                                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             </div>
@@ -110,6 +110,17 @@
         const generateRuleForm = document.getElementById('generate-rule-form');
         const debugLogEl = document.getElementById('debug-log');
         const debugLogDetails = document.getElementById('debug-log-details');
+        const conversationType = '{{ $aiConversation->type ?? "tags" }}';
+        
+        // Update test field labels based on conversation type
+        if (conversationType === 'recharge') {
+            const testLabel = document.getElementById('test-label');
+            const testDescription = document.getElementById('test-description');
+            const testInput = document.getElementById('test-order-id');
+            if (testLabel) testLabel.textContent = 'Subscription ID';
+            if (testDescription) testDescription.textContent = 'Enter a Recharge subscription ID. The PHP Rule above will run and show which updates would be applied.';
+            if (testInput) testInput.placeholder = 'e.g. 12345 (Recharge subscription ID)';
+        }
 
         function debugLog(label, obj) {
             if (!debugLogEl) return;
@@ -213,9 +224,12 @@
         const testOrderResults = document.getElementById('test-order-results');
         if (testOrderBtn && testOrderResults) {
             testOrderBtn.addEventListener('click', async () => {
-                const orderId = document.getElementById('test-order-id')?.value?.trim();
-                if (!orderId) {
-                    testOrderResults.innerHTML = '<p class="text-red-600 text-sm">Enter an order ID or order number.</p>';
+                const inputValue = document.getElementById('test-order-id')?.value?.trim();
+                if (!inputValue) {
+                    const errorMsg = conversationType === 'recharge' 
+                        ? 'Enter a subscription ID.' 
+                        : 'Enter an order ID or order number.';
+                    testOrderResults.innerHTML = '<p class="text-red-600 text-sm">' + errorMsg + '</p>';
                     testOrderResults.classList.remove('hidden');
                     return;
                 }
@@ -225,11 +239,16 @@
                     testOrderResults.classList.remove('hidden');
                     return;
                 }
-                const body = {
-                    order_id: orderId,
-                    order_data: (orderDataInput?.value ?? '').trim() || null,
-                    php_code: phpCodeToSend
-                };
+                const body = conversationType === 'recharge' 
+                    ? {
+                        subscription_id: inputValue,
+                        php_code: phpCodeToSend
+                    }
+                    : {
+                        order_id: inputValue,
+                        order_data: (orderDataInput?.value ?? '').trim() || null,
+                        php_code: phpCodeToSend
+                    };
                 debugLog('TEST_ORDER – Request', body);
                 testOrderResults.innerHTML = '<p class="text-gray-500 text-sm">Running test...</p>';
                 testOrderResults.classList.remove('hidden');
@@ -244,7 +263,6 @@
                         body: JSON.stringify(body)
                     });
                     const data = await response.json();
-                    const conversationType = '{{ $aiConversation->type ?? "tags" }}';
                     debugLog('TEST_ORDER – Response', { success: data.success, tags: data.tags || data.metafields || data.subscription_updates || null, error: data.error || null });
                     
                     // Log API information (condensed)
