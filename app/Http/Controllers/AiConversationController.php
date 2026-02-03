@@ -514,11 +514,21 @@ class AiConversationController extends Controller
      */
     public function generatePhp(Request $request, AiConversation $aiConversation): JsonResponse
     {
-        $validated = $request->validate([
-            'requirements' => 'nullable|string',
-            'order_data' => 'nullable|string',
-            'order_id' => 'nullable|string',
-        ]);
+        $type = $aiConversation->type ?? 'tags';
+        
+        if ($type === 'recharge') {
+            $validated = $request->validate([
+                'requirements' => 'nullable|string',
+                'subscription_data' => 'nullable|string',
+                'subscription_id' => 'nullable|string',
+            ]);
+        } else {
+            $validated = $request->validate([
+                'requirements' => 'nullable|string',
+                'order_data' => 'nullable|string',
+                'order_id' => 'nullable|string',
+            ]);
+        }
 
         $userRequirements = trim($validated['requirements'] ?? '') ?: $this->getUserRequirementsFromConversation($aiConversation);
         if (empty($userRequirements)) {
@@ -529,37 +539,102 @@ class AiConversationController extends Controller
         }
 
         $orderData = null;
-        if (!empty($validated['order_data'])) {
-            $orderData = json_decode($validated['order_data'], true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
+        
+        if ($type === 'recharge') {
+            // For recharge, fetch subscription from Recharge API
+            if (!empty($validated['subscription_data'])) {
+                $orderData = json_decode($validated['subscription_data'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Invalid JSON in subscription_data.',
+                    ], 422);
+                }
+            }
+            if ($orderData === null && !empty($validated['subscription_id'] ?? '')) {
+                try {
+                    $store = $aiConversation->store;
+                    $rechargeAccessToken = $store->recharge_access_token ?? '';
+                    
+                    if (!$rechargeAccessToken) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Recharge access token not configured for this store.',
+                        ], 422);
+                    }
+                    
+                    $subscriptionId = trim($validated['subscription_id']);
+                    $subscriptionUrl = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
+                    $subscriptionResponse = \Illuminate\Support\Facades\Http::withHeaders([
+                        'X-Recharge-Access-Token' => $rechargeAccessToken,
+                        'Content-Type' => 'application/json',
+                    ])->get($subscriptionUrl);
+                    
+                    if ($subscriptionResponse->failed()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Could not fetch subscription: HTTP ' . $subscriptionResponse->status(),
+                        ], 422);
+                    }
+                    
+                    $subscription = $subscriptionResponse->json()['subscription'] ?? null;
+                    if (!$subscription) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Subscription not found in Recharge API response.',
+                        ], 422);
+                    }
+                    
+                    // Use subscription data as orderData for AI generation
+                    $orderData = $subscription;
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Could not fetch subscription: ' . $e->getMessage(),
+                    ], 422);
+                }
+            }
+            
+            if ($orderData === null) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Invalid JSON in order_data.',
+                    'error' => 'Provide a sample subscription: paste Subscription JSON or enter Subscription ID to fetch.',
                 ], 422);
             }
-        }
-        if ($orderData === null && !empty($validated['order_id'] ?? '')) {
-            try {
-                $store = $aiConversation->store;
-                $shopifyService = new ShopifyService($store);
-                $orderData = $shopifyService->getOrderByIdOrNumber(trim($validated['order_id']));
-            } catch (\Throwable $e) {
+        } else {
+            // For tags/metafields, fetch order from Shopify
+            if (!empty($validated['order_data'])) {
+                $orderData = json_decode($validated['order_data'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Invalid JSON in order_data.',
+                    ], 422);
+                }
+            }
+            if ($orderData === null && !empty($validated['order_id'] ?? '')) {
+                try {
+                    $store = $aiConversation->store;
+                    $shopifyService = new ShopifyService($store);
+                    $orderData = $shopifyService->getOrderByIdOrNumber(trim($validated['order_id']));
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Could not fetch order: ' . $e->getMessage(),
+                    ], 422);
+                }
+            }
+            
+            if ($orderData === null) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Could not fetch order: ' . $e->getMessage(),
+                    'error' => 'Provide a sample order: paste Order JSON or enter Order number to fetch.',
                 ], 422);
             }
-        }
-
-        if ($orderData === null) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Provide a sample order: paste Order JSON or enter Order number to fetch.',
-            ], 422);
         }
 
         try {
-            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type ?? 'tags');
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $type);
             return response()->json([
                 'success' => true,
                 'php_code' => $result['php_code'],

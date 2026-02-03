@@ -18,17 +18,17 @@
 
                     <!-- Prompt + Sample order + Generate PHP -->
                     <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <h3 class="text-sm font-semibold text-gray-800 mb-3">1. Prompt and sample order</h3>
+                        <h3 class="text-sm font-semibold text-gray-800 mb-3">1. Prompt and sample <span id="sample-type-label">order</span></h3>
                         <label for="prompt-input" class="block text-sm font-medium text-gray-700 mb-1">Prompt (what to check and which tags to return)</label>
                         <textarea id="prompt-input" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-3"
                             placeholder="e.g. Tag subscription vs one-time, add order_count from customer API, box from SKU (14D/28D + gram), Flow from line item property _Flow, high_ltv if total > 200"></textarea>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Sample order (required for Generate PHP)</label>
-                        <p class="text-xs text-gray-500 mb-2">Paste order JSON or fetch by order number so the AI can tailor the code.</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-1" id="sample-label">Sample order (required for Generate PHP)</label>
+                        <p class="text-xs text-gray-500 mb-2" id="sample-description">Paste order JSON or fetch by order number so the AI can tailor the code.</p>
                         <textarea id="order-data" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm mb-2"
                             placeholder='Optional: {"id": "123", "line_items": [...]}'></textarea>
                         <div class="flex flex-wrap items-center gap-4">
                             <div class="min-w-[200px]">
-                                <label for="generate-order-id" class="block text-xs font-medium text-gray-600 mb-1">Or fetch by order number</label>
+                                <label for="generate-order-id" class="block text-xs font-medium text-gray-600 mb-1" id="fetch-label">Or fetch by order number</label>
                                 <input type="text" id="generate-order-id" placeholder="e.g. 1005"
                                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             </div>
@@ -112,14 +112,30 @@
         const debugLogDetails = document.getElementById('debug-log-details');
         const conversationType = '{{ $aiConversation->type ?? "tags" }}';
         
-        // Update test field labels based on conversation type
+        // Update field labels based on conversation type
         if (conversationType === 'recharge') {
+            // Update test field labels
             const testLabel = document.getElementById('test-label');
             const testDescription = document.getElementById('test-description');
             const testInput = document.getElementById('test-order-id');
             if (testLabel) testLabel.textContent = 'Subscription ID';
             if (testDescription) testDescription.textContent = 'Enter a Recharge subscription ID. The PHP Rule above will run and show which updates would be applied.';
             if (testInput) testInput.placeholder = 'e.g. 12345 (Recharge subscription ID)';
+            
+            // Update generate PHP field labels
+            const sampleTypeLabel = document.getElementById('sample-type-label');
+            const sampleLabel = document.getElementById('sample-label');
+            const sampleDescription = document.getElementById('sample-description');
+            const fetchLabel = document.getElementById('fetch-label');
+            const generateInput = document.getElementById('generate-order-id');
+            const orderDataInput = document.getElementById('order-data');
+            
+            if (sampleTypeLabel) sampleTypeLabel.textContent = 'subscription';
+            if (sampleLabel) sampleLabel.textContent = 'Sample subscription (required for Generate PHP)';
+            if (sampleDescription) sampleDescription.textContent = 'Paste subscription JSON or fetch by subscription ID so the AI can tailor the code.';
+            if (fetchLabel) fetchLabel.textContent = 'Or fetch by subscription ID';
+            if (generateInput) generateInput.placeholder = 'e.g. 12345';
+            if (orderDataInput) orderDataInput.placeholder = 'Optional: {"id": "123", "status": "ACTIVE", ...}';
         }
 
         function debugLog(label, obj) {
@@ -135,19 +151,34 @@
         if (generatePhpBtn && phpRuleEdit) {
             generatePhpBtn.addEventListener('click', async () => {
                 const requirements = promptInput?.value?.trim() ?? '';
-                const orderData = (orderDataInput?.value ?? '').trim();
-                const orderId = document.getElementById('generate-order-id')?.value?.trim() ?? '';
+                const inputData = (orderDataInput?.value ?? '').trim();
+                const inputId = document.getElementById('generate-order-id')?.value?.trim() ?? '';
                 if (!requirements) {
                     alert('Enter a prompt describing what to check and which tags to return.');
                     return;
                 }
-                if (!orderData && !orderId) {
-                    alert('Provide a sample order: paste Order JSON or enter an order number to fetch.');
+                if (!inputData && !inputId) {
+                    const errorMsg = conversationType === 'recharge' 
+                        ? 'Provide a sample subscription: paste Subscription JSON or enter a subscription ID to fetch.'
+                        : 'Provide a sample order: paste Order JSON or enter an order number to fetch.';
+                    alert(errorMsg);
                     return;
                 }
                 generatePhpBtn.disabled = true;
                 generatePhpBtn.textContent = 'Generating...';
                 try {
+                    const body = conversationType === 'recharge' 
+                        ? {
+                            requirements: requirements,
+                            subscription_data: inputData || null,
+                            subscription_id: inputId || null
+                        }
+                        : {
+                            requirements: requirements,
+                            order_data: inputData || null,
+                            order_id: inputId || null
+                        };
+                    
                     const response = await fetch('{{ route("ai-conversations.generate-php", $aiConversation) }}', {
                         method: 'POST',
                         headers: {
@@ -155,17 +186,16 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify({
-                            requirements: requirements,
-                            order_data: orderData || null,
-                            order_id: orderId || null
-                        })
+                        body: JSON.stringify(body)
                     });
                     const data = await response.json();
                     debugLog('GENERATE_PHP – Response', { success: data.success, php_code_length: data.php_code ? data.php_code.length : 0, error: data.error || null });
                     if (data.success && data.php_code) {
                         phpRuleEdit.value = data.php_code;
-                        alert('PHP code generated. Edit if needed, then use Test to see tags for an order.');
+                        const successMsg = conversationType === 'recharge' 
+                            ? 'PHP code generated. Edit if needed, then use Test to see updates for a subscription.'
+                            : 'PHP code generated. Edit if needed, then use Test to see tags for an order.';
+                        alert(successMsg);
                     } else {
                         alert('Error: ' + (data.error || 'Unknown error'));
                     }
