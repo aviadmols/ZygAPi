@@ -33,4 +33,9 @@ class Store extends Model
     {
         return $this->hasMany(AiConversation::class);
     }
+
+    public function customEndpoints(): HasMany
+    {
+        return $this->hasMany(CustomEndpoint::class);
+    }
 }

@@ -61,6 +61,17 @@ Route::middleware('auth')->group(function () {
     // OpenRouter Settings (API key + model)
     Route::get('settings/openrouter', [\App\Http\Controllers\OpenRouterSettingsController::class, 'index'])->name('settings.openrouter.index');
     Route::put('settings/openrouter', [\App\Http\Controllers\OpenRouterSettingsController::class, 'update'])->name('settings.openrouter.update');
+
+    // Custom Endpoints (build your own endpoint with AI)
+    Route::get('custom-endpoints', [\App\Http\Controllers\CustomEndpointController::class, 'index'])->name('custom-endpoints.index');
+    Route::get('custom-endpoints/create', [\App\Http\Controllers\CustomEndpointController::class, 'create'])->name('custom-endpoints.create');
+    Route::get('custom-endpoints/build/{store}', [\App\Http\Controllers\CustomEndpointController::class, 'build'])->name('custom-endpoints.build');
+    Route::post('custom-endpoints/generate', [\App\Http\Controllers\CustomEndpointController::class, 'generate'])->name('custom-endpoints.generate');
+    Route::post('custom-endpoints', [\App\Http\Controllers\CustomEndpointController::class, 'store'])->name('custom-endpoints.store');
+    Route::get('custom-endpoints/{custom_endpoint}', [\App\Http\Controllers\CustomEndpointController::class, 'show'])->name('custom-endpoints.show');
+    Route::get('custom-endpoints/{custom_endpoint}/edit', [\App\Http\Controllers\CustomEndpointController::class, 'edit'])->name('custom-endpoints.edit');
+    Route::put('custom-endpoints/{custom_endpoint}', [\App\Http\Controllers\CustomEndpointController::class, 'update'])->name('custom-endpoints.update');
+    Route::delete('custom-endpoints/{custom_endpoint}', [\App\Http\Controllers\CustomEndpointController::class, 'destroy'])->name('custom-endpoints.destroy');
 });
 
 // Webhooks (without auth - with HMAC verification)
@@ -68,5 +79,8 @@ Route::post('webhooks/shopify/order-created', [\App\Http\Controllers\WebhookCont
 
 // Tagging rule apply: run rule on order and update Shopify tags. Auth: session OR X-Webhook-Token / ?token
 Route::post('webhooks/tagging-rule/{tagging_rule}/apply', [\App\Http\Controllers\TaggingRuleController::class, 'apply'])->name('webhooks.tagging-rule.apply');
+
+// Custom endpoint execution (X-Webhook-Token or ?token)
+Route::match(['get', 'post', 'put'], 'webhooks/custom-endpoint/{slug}', [\App\Http\Controllers\CustomEndpointController::class, 'execute'])->name('webhooks.custom-endpoint.execute');
 
 require __DIR__.'/auth.php';

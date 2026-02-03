@@ -305,4 +305,58 @@ Return ONLY valid JSON in this exact structure (no markdown, no extra text):
             ];
         }
     }
+
+    /**
+     * Generate PHP code for a custom endpoint (Shopify or Recharge).
+     * Uses platform docs: fetch input params, execute prompt logic, return test_return_values structure.
+     * Returns array with 'php_code' and optionally 'http_method' (POST/PUT).
+     */
+    public function generateCustomEndpointCode(string $platform, string $prompt, array $inputParams, array $testReturnValues): array
+    {
+        $platform = strtolower($platform) === 'recharge' ? 'recharge' : 'shopify';
+        $inputList = array_map(function ($p) {
+            return is_array($p) ? ($p['name'] ?? $p) : $p;
+        }, $inputParams);
+        $returnList = array_map(function ($r) {
+            return is_array($r) ? ($r['name'] ?? $r) : $r;
+        }, $testReturnValues);
+
+        $systemPrompt = "You are an expert at writing PHP code for API endpoints. You will receive:
+1. Platform: {$platform} (use {$platform} API documentation)
+2. A prompt describing what the endpoint should do
+3. Input parameters the endpoint receives (from request body/query)
+4. Expected return keys (the endpoint must set/output these for the response)
+
+Rules:
+- Output ONLY PHP code. No markdown, no explanation. The code will run in a context where \$store (Store model), \$input (array of request params), \$shopDomain, \$accessToken (Shopify), and \$rechargeAccessToken (if Recharge) are available.
+- For Shopify: use \$shopDomain and \$accessToken for Admin API calls (GET/POST/PUT). Base URL: https://{\$shopDomain}/admin/api/2024-01/
+- For Recharge: use \$rechargeAccessToken. Base URL: https://api.rechargeapps.com/
+- Fetch data from {$platform} based on \$input (e.g. order_id -> GET order, subscription_id -> GET subscription).
+- Implement the logic described in the prompt.
+- Set a variable \$response = [] with the expected return keys. The endpoint will JSON-encode \$response.
+- Use PUT when updating existing resources, POST when creating or when the docs say POST. Set \$httpMethod = 'POST' or 'PUT' at the end of your code so the endpoint knows which method to document.
+- Do not use <?php or exit or echo. You may use return; to exit early.";
+
+        $userPrompt = "Platform: {$platform}\n\nPrompt:\n{$prompt}\n\nInput parameters (the endpoint receives these):\n" . implode(", ", $inputList)
+            . "\n\nExpected return keys (response must include these):\n" . implode(", ", $returnList);
+
+        $messages = [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user', 'content' => $userPrompt],
+        ];
+
+        $response = $this->chat($messages);
+        $content = trim($response['content']);
+
+        if (preg_match('/```(?:php)?\s*(.*?)\s*```/s', $content, $matches)) {
+            $content = trim($matches[1]);
+        }
+
+        $httpMethod = 'POST';
+        if (preg_match('/\$httpMethod\s*=\s*[\'"](PUT|POST)[\'"]/i', $content, $m)) {
+            $httpMethod = strtoupper($m[1]);
+        }
+
+        return ['php_code' => $content, 'http_method' => $httpMethod];
+    }
 }
