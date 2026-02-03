@@ -210,7 +210,18 @@ class TaggingEngineService
         if (!empty($rule->php_rule)) {
             $rule->loadMissing('store');
             $store = $rule->relationLoaded('store') ? $rule->store : null;
-            return $this->executePhpRule($rule->php_rule, $order, $store);
+            Log::info('TaggingEngineService::extractTags: Using PHP rule', [
+                'rule_id' => $rule->id,
+                'php_rule_length' => strlen($rule->php_rule),
+                'has_store' => $store !== null,
+            ]);
+            $result = $this->executePhpRule($rule->php_rule, $order, $store);
+            Log::info('TaggingEngineService::extractTags: PHP rule result', [
+                'rule_id' => $rule->id,
+                'tags_count' => count($result),
+                'tags' => $result,
+            ]);
+            return $result;
         }
 
         $tags = [];
@@ -348,11 +359,15 @@ PHP;
             proc_close($proc);
             @unlink($tmpFile);
             if ($stderr) {
-                Log::debug('TaggingEngineService PHP rule stderr: ' . $stderr);
+                Log::warning('TaggingEngineService PHP rule stderr: ' . $stderr);
+            }
+            if (empty($stdout)) {
+                Log::warning('TaggingEngineService: PHP rule returned empty output. stderr: ' . ($stderr ?: 'none'));
+                return [];
             }
             $decoded = json_decode($stdout, true);
             if (!is_array($decoded)) {
-                Log::warning('TaggingEngineService: PHP rule did not return valid JSON: ' . substr($stdout, 0, 200));
+                Log::warning('TaggingEngineService: PHP rule did not return valid JSON. stdout: ' . substr($stdout, 0, 500) . ', stderr: ' . ($stderr ?: 'none'));
                 return [];
             }
             return array_values(array_filter(array_map('strval', $decoded)));
