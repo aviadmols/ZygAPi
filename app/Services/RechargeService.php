@@ -94,4 +94,95 @@ class RechargeService
 
         return null;
     }
+
+    /**
+     * Get subscription by subscription ID
+     */
+    public function getSubscription(string $subscriptionId): ?array
+    {
+        if (!$this->store->recharge_access_token) {
+            Log::info("Recharge API not configured for store {$this->store->id}");
+            return null;
+        }
+
+        $url = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
+
+        try {
+            $response = Http::withHeaders([
+                'X-Recharge-Access-Token' => $this->store->recharge_access_token,
+                'Content-Type' => 'application/json',
+            ])->get($url);
+
+            if ($response->failed()) {
+                Log::warning("Recharge API returned HTTP {$response->status()} for subscription {$subscriptionId}");
+                return null;
+            }
+
+            return $response->json()['subscription'] ?? null;
+        } catch (\Exception $e) {
+            Log::error("Recharge API Error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Get subscriptions by Shopify order ID
+     */
+    public function getSubscriptionsByOrderId(string $shopifyOrderId): array
+    {
+        if (!$this->store->recharge_access_token) {
+            Log::info("Recharge API not configured for store {$this->store->id}");
+            return [];
+        }
+
+        $url = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$shopifyOrderId}";
+
+        try {
+            $response = Http::withHeaders([
+                'X-Recharge-Access-Token' => $this->store->recharge_access_token,
+                'Content-Type' => 'application/json',
+            ])->get($url);
+
+            if ($response->failed()) {
+                Log::warning("Recharge API returned HTTP {$response->status()}");
+                return [];
+            }
+
+            $data = $response->json();
+            return $data['subscriptions'] ?? [];
+        } catch (\Exception $e) {
+            Log::error("Recharge API Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Update subscription
+     */
+    public function updateSubscription(string $subscriptionId, array $updates): bool
+    {
+        if (!$this->store->recharge_access_token) {
+            throw new \Exception("Recharge API not configured for this store");
+        }
+
+        $url = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
+
+        try {
+            $response = Http::withHeaders([
+                'X-Recharge-Access-Token' => $this->store->recharge_access_token,
+                'Content-Type' => 'application/json',
+            ])->put($url, ['subscription' => $updates]);
+
+            if ($response->failed()) {
+                $errorMsg = $response->body();
+                Log::error("Failed to update subscription {$subscriptionId}: HTTP {$response->status()} - {$errorMsg}");
+                throw new \Exception("Failed to update subscription: HTTP {$response->status()}");
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Recharge API Error updating subscription: " . $e->getMessage());
+            throw $e;
+        }
+    }
 }

@@ -113,16 +113,23 @@ class OpenRouterService
     }
 
     /**
-     * Generate PHP tagging rule from order sample and user requirements.
+     * Generate PHP rule from order sample and user requirements.
      * Returns array with key 'php_code' (string). Uses prompt template php_rule_generation.
+     * @param string $type 'tags', 'metafields', or 'recharge'
      */
-    public function generatePhpRule(array $orderData, string $userRequirements): array
+    public function generatePhpRule(array $orderData, string $userRequirements, string $type = 'tags'): array
     {
-        $systemPrompt = PromptTemplate::getBySlug('php_rule_generation')
-            ?? \Database\Seeders\PromptTemplateSeeder::DEFAULT_PHP_RULE_PROMPT;
+        if ($type === 'metafields') {
+            $systemPrompt = $this->getMetafieldsPrompt();
+        } elseif ($type === 'recharge') {
+            $systemPrompt = $this->getRechargePrompt();
+        } else {
+            $systemPrompt = PromptTemplate::getBySlug('php_rule_generation')
+                ?? \Database\Seeders\PromptTemplateSeeder::DEFAULT_PHP_RULE_PROMPT;
+        }
 
         $userPrompt = "Order Data (sample):\n" . json_encode($orderData, JSON_PRETTY_PRINT)
-            . "\n\nUser requirements (what to check and which tags to return):\n" . $userRequirements;
+            . "\n\nUser requirements: " . $userRequirements;
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
@@ -138,6 +145,74 @@ class OpenRouterService
         }
 
         return ['php_code' => $content];
+    }
+
+    /**
+     * Get prompt for metafields generation
+     */
+    protected function getMetafieldsPrompt(): string
+    {
+        return <<<'PROMPT'
+You are an expert at writing PHP code for updating Shopify order metafields in Zyg Automations.
+
+## Output format
+
+You must output **only** PHP code. No JSON. No markdown code block, no explanation. The code runs in a context where these variables exist: `$order` (array), `$shopDomain` (string), `$accessToken` (string). You must set `$metafields` to an array where keys are namespace.key and values are the metafield values.
+
+## Structure
+
+1. Start with: $metafields = [];
+2. Early exit if order invalid: if (empty($order) || empty($order['id'])) { return; }
+3. Calculate metafield values based on order data and user requirements
+4. Set metafields like: $metafields['custom']['fulfillment_date'] = '2024-01-15T12:00:00Z';
+5. Use date functions: date('Y-m-d\TH:i:s\Z', strtotime($order['created_at'] . ' +12 days'))
+6. Support expressions like: addDays(12, Now) -> date('Y-m-d\TH:i:s\Z', strtotime($order['created_at'] . ' +12 days'))
+
+## Metafield format
+
+Metafields should be structured as:
+- Namespace: usually 'custom'
+- Key: the metafield key (e.g., 'fulfillment_date')
+- Value: the value as a string (dates in ISO 8601 format: YYYY-MM-DDTHH:mm:ssZ)
+
+Example:
+$metafields['custom']['fulfillment_date'] = date('Y-m-d\TH:i:s\Z', strtotime($order['created_at'] . ' +12 days'));
+
+Output only the PHP code, nothing else.
+PROMPT;
+    }
+
+    /**
+     * Get prompt for Recharge subscription updates
+     */
+    protected function getRechargePrompt(): string
+    {
+        return <<<'PROMPT'
+You are an expert at writing PHP code for updating Recharge subscriptions in Zyg Automations.
+
+## Output format
+
+You must output **only** PHP code. No JSON. No markdown code block, no explanation. The code runs in a context where these variables exist: `$order` (array), `$shopDomain` (string), `$accessToken` (string), `$rechargeAccessToken` (string). You must set `$subscriptionUpdates` to an array of updates to apply to subscriptions.
+
+## Structure
+
+1. Start with: $subscriptionUpdates = [];
+2. Early exit if order invalid: if (empty($order) || empty($order['id'])) { return; }
+3. Find subscriptions for this order (may need to call Recharge API)
+4. Calculate updates based on order data and user requirements
+5. Set updates like: $subscriptionUpdates['next_charge_scheduled_at'] = date('Y-m-d', strtotime('+30 days'));
+6. Common fields: next_charge_scheduled_at, quantity, order_interval_unit, order_interval_frequency
+
+## Recharge API
+
+To get subscriptions: GET https://api.rechargeapps.com/subscriptions?shopify_order_id={order_id}
+Headers: X-Recharge-Access-Token: $rechargeAccessToken
+
+To update: PUT https://api.rechargeapps.com/subscriptions/{subscription_id}
+Body: { "subscription": $subscriptionUpdates }
+
+Output only the PHP code, nothing else.
+PROMPT;
     }
 
     /**
