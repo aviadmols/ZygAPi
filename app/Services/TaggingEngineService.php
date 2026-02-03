@@ -302,6 +302,10 @@ class TaggingEngineService
      */
     public function executePhpRule(string $phpCode, array $order, ?Store $store = null): array
     {
+        // Remove <?php and ?> tags if present, as the wrapper already includes <?php
+        $phpCode = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
+        $phpCode = preg_replace('/\?>\s*$/i', '', $phpCode);
+        
         $orderJson = json_encode($order);
         if ($orderJson === false) {
             Log::warning('TaggingEngineService: failed to encode order for PHP rule');
