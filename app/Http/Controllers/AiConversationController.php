@@ -583,6 +583,92 @@ class AiConversationController extends Controller
     }
 
     /**
+     * Analyze test log with AI to get recommendations
+     */
+    public function analyzeTestLog(Request $request, AiConversation $aiConversation): JsonResponse
+    {
+        $validated = $request->validate([
+            'log_content' => 'required|string',
+            'php_code' => 'required|string',
+            'prompt' => 'nullable|string',
+        ]);
+
+        try {
+            $systemPrompt = "You are an expert at debugging PHP code for Shopify order processing (tags, metafields, or Recharge subscriptions).
+
+Analyze the provided test log, PHP code, and user prompt. Identify any issues, errors, or potential improvements.
+
+Provide your analysis in JSON format:
+{
+  \"issues\": [\"issue1\", \"issue2\"],
+  \"recommendations\": [\"recommendation1\", \"recommendation2\"],
+  \"suggested_fixes\": \"suggested PHP code fix or explanation\"
+}
+
+Be specific and actionable. Focus on:
+- Syntax errors
+- Logic errors
+- Missing conditions
+- Incorrect data access
+- API call issues
+- Best practices";
+
+            $userPrompt = "User Prompt:\n" . ($validated['prompt'] ?? 'N/A') . "\n\n";
+            $userPrompt .= "PHP Code:\n" . $validated['php_code'] . "\n\n";
+            $userPrompt .= "Test Log:\n" . $validated['log_content'];
+
+            $messages = [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userPrompt],
+            ];
+
+            $response = $this->openRouterService->chat($messages);
+            $content = trim($response['content']);
+
+            // Try to extract JSON from response
+            if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
+                $jsonContent = $matches[1];
+            } elseif (preg_match('/```\s*(.*?)\s*```/s', $content, $matches)) {
+                $jsonContent = $matches[1];
+            } else {
+                if (preg_match('/\{.*\}/s', $content, $matches)) {
+                    $jsonContent = $matches[0];
+                } else {
+                    // Fallback: return raw content
+                    return response()->json([
+                        'success' => true,
+                        'analysis' => $content,
+                        'raw' => true,
+                    ]);
+                }
+            }
+
+            $result = json_decode($jsonContent, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'success' => true,
+                    'analysis' => $content,
+                    'raw' => true,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'issues' => $result['issues'] ?? [],
+                'recommendations' => $result['recommendations'] ?? [],
+                'suggested_fixes' => $result['suggested_fixes'] ?? '',
+                'raw' => false,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('AI log analysis error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get user requirements string from conversation messages (user role only).
      */
     protected function getUserRequirementsFromConversation(AiConversation $aiConversation): string

@@ -61,6 +61,12 @@
                             </button>
                         </div>
                         <div id="test-order-results" class="mt-4 hidden"></div>
+                        <div id="analyze-log-section" class="mt-4 hidden">
+                            <button type="button" id="analyze-log-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded text-sm">
+                                Analyze Log with AI
+                            </button>
+                            <div id="analyze-log-results" class="mt-4 hidden"></div>
+                        </div>
                     </div>
 
                     <!-- Save Rule to Tagging Rules -->
@@ -296,12 +302,115 @@
                         }
                         
                         testOrderResults.innerHTML = html;
+                        // Show analyze log button after successful test
+                        document.getElementById('analyze-log-section')?.classList.remove('hidden');
                     } else {
                         testOrderResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">' + (data.error || 'Error') + '</div>';
+                        // Show analyze log button even on error
+                        document.getElementById('analyze-log-section')?.classList.remove('hidden');
                     }
                 } catch (err) {
                     debugLog('TEST_ORDER – Error', err.message);
                     testOrderResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + err.message + '</div>';
+                    // Show analyze log button even on error
+                    document.getElementById('analyze-log-section')?.classList.remove('hidden');
+                }
+            });
+        }
+
+        // Analyze log with AI
+        const analyzeLogBtn = document.getElementById('analyze-log-btn');
+        const analyzeLogResults = document.getElementById('analyze-log-results');
+        if (analyzeLogBtn) {
+            analyzeLogBtn.addEventListener('click', async () => {
+                const btn = analyzeLogBtn;
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Analyzing...';
+                
+                const logContent = debugLogEl?.textContent || '';
+                const phpCode = phpRuleEdit?.value?.trim() || '';
+                const prompt = promptInput?.value?.trim() || '';
+                
+                if (!logContent) {
+                    alert('No log content available. Run a test first.');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    return;
+                }
+                
+                if (!phpCode) {
+                    alert('No PHP code available.');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    return;
+                }
+                
+                analyzeLogResults.classList.remove('hidden');
+                analyzeLogResults.innerHTML = '<p class="text-gray-500 text-sm">Analyzing log with AI...</p>';
+                
+                try {
+                    const response = await fetch('{{ route("ai-conversations.analyze-test-log", $aiConversation) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            log_content: logContent,
+                            php_code: phpCode,
+                            prompt: prompt
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        let html = '<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">';
+                        html += '<h4 class="text-sm font-semibold text-gray-800 mb-3">AI Analysis & Recommendations</h4>';
+                        
+                        if (data.raw) {
+                            html += '<div class="bg-white border border-gray-200 rounded p-3 text-sm text-gray-700 whitespace-pre-wrap">' + data.analysis.replace(/</g, '&lt;') + '</div>';
+                        } else {
+                            if (data.issues && data.issues.length > 0) {
+                                html += '<div class="mb-3">';
+                                html += '<p class="text-sm font-semibold text-red-700 mb-2">Issues Found:</p>';
+                                html += '<ul class="list-disc list-inside space-y-1">';
+                                data.issues.forEach(issue => {
+                                    html += '<li class="text-sm text-gray-700">' + String(issue).replace(/</g, '&lt;') + '</li>';
+                                });
+                                html += '</ul></div>';
+                            }
+                            
+                            if (data.recommendations && data.recommendations.length > 0) {
+                                html += '<div class="mb-3">';
+                                html += '<p class="text-sm font-semibold text-blue-700 mb-2">Recommendations:</p>';
+                                html += '<ul class="list-disc list-inside space-y-1">';
+                                data.recommendations.forEach(rec => {
+                                    html += '<li class="text-sm text-gray-700">' + String(rec).replace(/</g, '&lt;') + '</li>';
+                                });
+                                html += '</ul></div>';
+                            }
+                            
+                            if (data.suggested_fixes) {
+                                html += '<div class="mb-3">';
+                                html += '<p class="text-sm font-semibold text-green-700 mb-2">Suggested Fixes:</p>';
+                                html += '<pre class="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">' + String(data.suggested_fixes).replace(/</g, '&lt;') + '</pre>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        html += '</div>';
+                        analyzeLogResults.innerHTML = html;
+                    } else {
+                        analyzeLogResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + (data.error || 'Failed to analyze log') + '</div>';
+                    }
+                } catch (error) {
+                    analyzeLogResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + error.message + '</div>';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
                 }
             });
         }
