@@ -41,7 +41,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="recharge_access_token" class="block text-sm font-medium text-gray-700">Recharge Access Token (אופציונלי)</label>
+                            <label for="recharge_access_token" class="block text-sm font-medium text-gray-700">Recharge Access Token (Optional)</label>
                             <input type="text" name="recharge_access_token" id="recharge_access_token" value="{{ old('recharge_access_token', $store->recharge_access_token) }}"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             @error('recharge_access_token')

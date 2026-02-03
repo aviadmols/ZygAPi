@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('store_id')->constrained()->onDelete('cascade');
             $table->foreignId('rule_id')->nullable()->constrained('tagging_rules')->onDelete('set null');
-            $table->json('order_ids'); // רשימת order IDs לעיבוד
+            $table->json('order_ids'); // List of order IDs for processing
             $table->enum('status', ['pending', 'processing', 'completed', 'failed'])->default('pending');
-            $table->json('progress')->nullable(); // התקדמות מפורטת
+            $table->json('progress')->nullable(); // Detailed progress information
             $table->integer('total_orders')->default(0);
             $table->integer('processed_orders')->default(0);
             $table->integer('failed_orders')->default(0);
