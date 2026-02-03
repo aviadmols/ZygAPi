@@ -24,14 +24,27 @@ class AiConversation extends Model
      */
     public function getAttribute($key)
     {
+        $value = parent::getAttribute($key);
+        
+        // If type is null or empty and key is 'type', return default
+        if ($key === 'type' && (empty($value) || is_null($value))) {
+            return 'tags';
+        }
+        
+        return $value;
+    }
+
+    /**
+     * Check if type column exists in database
+     */
+    protected static function typeColumnExists(): bool
+    {
         try {
-            return parent::getAttribute($key);
+            $connection = (new static)->getConnection();
+            $schema = $connection->getSchemaBuilder();
+            return $schema->hasColumn((new static)->getTable(), 'type');
         } catch (\Throwable $e) {
-            // If column doesn't exist, return default for 'type'
-            if ($key === 'type') {
-                return 'tags';
-            }
-            throw $e;
+            return false;
         }
     }
 

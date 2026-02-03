@@ -73,22 +73,19 @@ class AiConversationController extends Controller
     public function show(AiConversation $aiConversation): View
     {
         try {
-            // Check if type column exists in database, if not set default
-            try {
-                $type = $aiConversation->getAttribute('type');
-                if (empty($type)) {
+            // Ensure type is set (will use default from model if column doesn't exist)
+            $type = $aiConversation->getAttribute('type') ?? 'tags';
+            $aiConversation->setAttribute('type', $type);
+            
+            // Try to save if column exists, but don't fail if it doesn't
+            if (AiConversation::typeColumnExists() && empty($aiConversation->getOriginal('type'))) {
+                try {
                     $aiConversation->type = 'tags';
-                    // Only save if column exists
-                    try {
-                        $aiConversation->save();
-                    } catch (\Throwable $e) {
-                        // Column might not exist, use default without saving
-                        $aiConversation->setAttribute('type', 'tags');
-                    }
+                    $aiConversation->saveQuietly();
+                } catch (\Throwable $e) {
+                    // Column might not exist, ignore
+                    Log::debug('Could not save type field', ['error' => $e->getMessage()]);
                 }
-            } catch (\Throwable $e) {
-                // Column doesn't exist, set default in memory only
-                $aiConversation->setAttribute('type', 'tags');
             }
             
             $aiConversation->load('store', 'user', 'generatedRule');
@@ -100,7 +97,7 @@ class AiConversationController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             
-            // Fallback: try to load without type
+            // Fallback: ensure type is set and try again
             try {
                 $aiConversation->setAttribute('type', 'tags');
                 $aiConversation->load('store', 'user', 'generatedRule');
