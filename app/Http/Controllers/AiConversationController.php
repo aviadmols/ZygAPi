@@ -294,28 +294,6 @@ class AiConversationController extends Controller
                     'recharge_calls' => [],
                 ];
             }
-            
-            // Collect API call logs - only essential information
-            $apiLogs = [
-                'shopify_order' => [
-                    'order_id' => $orderId,
-                    'order_number' => $order['order_number'] ?? $order['name'] ?? null,
-                    'customer_email' => $order['customer']['email'] ?? null,
-                    'line_items_count' => count($order['line_items'] ?? []),
-                    'line_items_summary' => array_map(function($item) {
-                        return [
-                            'id' => $item['id'] ?? null,
-                            'title' => $item['title'] ?? null,
-                            'sku' => $item['sku'] ?? null,
-                            'quantity' => $item['quantity'] ?? null,
-                            'properties' => $item['properties'] ?? [],
-                        ];
-                    }, array_slice($order['line_items'] ?? [], 0, 5)), // Only first 5 items
-                    'tags' => $order['tags'] ?? null,
-                    'created_at' => $order['created_at'] ?? null,
-                ],
-                'recharge_calls' => [],
-            ];
 
             $phpCode = trim($validated['php_code'] ?? '');
             if ($phpCode === '') {
