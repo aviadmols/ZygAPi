@@ -27,7 +27,12 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="name" class="block text-sm font-medium text-gray-700">Rule Name</label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="name" class="block text-sm font-medium text-gray-700">Rule Name</label>
+                                <button type="button" id="generate-name-description-btn" class="text-xs bg-purple-500 hover:bg-purple-600 text-white font-medium py-1 px-3 rounded">
+                                    Generate from Code
+                                </button>
+                            </div>
                             <input type="text" name="name" id="name" value="{{ old('name', $taggingRule->name) }}" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             @error('name')
@@ -144,6 +149,46 @@
         const testLogEl = document.getElementById('test-log');
         const testLogDetails = document.getElementById('test-log-details');
         document.getElementById('test-log-clear')?.addEventListener('click', () => { if (testLogEl) testLogEl.textContent = ''; });
+
+        // Generate name and description from code
+        const generateNameDescBtn = document.getElementById('generate-name-description-btn');
+        const nameInput = document.getElementById('name');
+        const descriptionTextarea = document.getElementById('description');
+        
+        if (generateNameDescBtn) {
+            generateNameDescBtn.addEventListener('click', async () => {
+                const btn = generateNameDescBtn;
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Generating...';
+                
+                try {
+                    const response = await fetch('{{ route("tagging-rules.generate-name-description", $taggingRule) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        nameInput.value = data.name;
+                        descriptionTextarea.value = data.description;
+                        alert('Name and description generated successfully!');
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to generate name and description'));
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            });
+        }
 
         function appendTestLog(label, content) {
             if (!testLogEl) return;

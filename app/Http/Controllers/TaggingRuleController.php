@@ -323,6 +323,43 @@ class TaggingRuleController extends Controller
     }
 
     /**
+     * Generate rule name and description from rule code using AI.
+     */
+    public function generateNameAndDescription(Request $request, TaggingRule $taggingRule): JsonResponse
+    {
+        try {
+            $phpRule = $taggingRule->php_rule;
+            $rulesJson = $taggingRule->rules_json;
+            $tagsTemplate = $taggingRule->tags_template;
+
+            if (empty($phpRule) && empty($rulesJson)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Rule has no PHP code or JSON rules to analyze.',
+                ], 422);
+            }
+
+            $result = $this->openRouterService->generateRuleNameAndDescriptionFromCode(
+                $phpRule,
+                $rulesJson,
+                $tagsTemplate
+            );
+
+            return response()->json([
+                'success' => true,
+                'name' => $result['name'],
+                'description' => $result['description'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('TaggingRuleController::generateNameAndDescription: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Apply rule to an order (update tags in Shopify). Used as webhook or from dashboard.
      * Auth: logged-in user, or X-Webhook-Token / ?token matching rule's webhook_token.
      */

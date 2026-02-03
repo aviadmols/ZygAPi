@@ -211,4 +211,98 @@ Return ONLY valid JSON in this exact structure (no markdown, no extra text):
             'description' => $result['description'],
         ];
     }
+
+    /**
+     * Generate rule name and description by analyzing the rule code (PHP or JSON).
+     * Returns array with 'name' and 'description' keys.
+     */
+    public function generateRuleNameAndDescriptionFromCode(?string $phpRule = null, ?array $rulesJson = null, ?string $tagsTemplate = null): array
+    {
+        $systemPrompt = "You are an expert at analyzing Shopify order tagging rule code and creating clear, descriptive names and descriptions.
+
+Given PHP code or JSON rules for a tagging rule, analyze what the code does and generate:
+1. A concise, descriptive rule name (max 60 characters) that clearly indicates what the rule does
+2. A detailed description (2-4 sentences) explaining what conditions the rule checks and what tags it applies
+
+The name should be in English, use title case, and be specific (e.g., 'Subscription Orders with High LTV', 'Box Size Based on Days and Gram', 'Customer Order Count Tagging').
+
+The description should explain:
+- What conditions or criteria the rule evaluates
+- What tags are applied and when
+- Any special logic or considerations
+
+Return ONLY valid JSON in this exact structure (no markdown, no extra text):
+{
+  \"name\": \"Rule Name Here\",
+  \"description\": \"Detailed description of what the rule does, what conditions it checks, and what tags it applies.\"
+}";
+
+        $codeDescription = '';
+        if ($phpRule) {
+            $codeDescription = "PHP Rule Code:\n" . $phpRule;
+        } elseif ($rulesJson) {
+            $codeDescription = "Rules JSON:\n" . json_encode($rulesJson, JSON_PRETTY_PRINT);
+            if ($tagsTemplate) {
+                $codeDescription .= "\n\nTags Template:\n" . $tagsTemplate;
+            }
+        } else {
+            // Fallback if no code provided
+            return [
+                'name' => 'Tagging Rule',
+                'description' => 'A tagging rule for Shopify orders.',
+            ];
+        }
+
+        $userPrompt = "Analyze the following tagging rule code and generate an appropriate name and description:\n\n" . $codeDescription;
+
+        $messages = [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user', 'content' => $userPrompt],
+        ];
+
+        try {
+            $response = $this->chat($messages);
+            $content = trim($response['content']);
+
+            // Try to extract JSON from response
+            if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
+                $jsonContent = $matches[1];
+            } elseif (preg_match('/```\s*(.*?)\s*```/s', $content, $matches)) {
+                $jsonContent = $matches[1];
+            } else {
+                // Try to find JSON object in the text
+                if (preg_match('/\{.*\}/s', $content, $matches)) {
+                    $jsonContent = $matches[0];
+                } else {
+                    // Fallback
+                    return [
+                        'name' => 'Tagging Rule',
+                        'description' => 'A tagging rule for Shopify orders.',
+                    ];
+                }
+            }
+
+            $result = json_decode($jsonContent, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE || !isset($result['name']) || !isset($result['description'])) {
+                // Fallback
+                return [
+                    'name' => 'Tagging Rule',
+                    'description' => 'A tagging rule for Shopify orders.',
+                ];
+            }
+
+            return [
+                'name' => $result['name'],
+                'description' => $result['description'],
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Failed to generate rule name/description from code', ['error' => $e->getMessage()]);
+            // Fallback
+            return [
+                'name' => 'Tagging Rule',
+                'description' => 'A tagging rule for Shopify orders.',
+            ];
+        }
+    }
 }
