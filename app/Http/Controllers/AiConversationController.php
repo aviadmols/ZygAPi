@@ -202,7 +202,7 @@ class AiConversationController extends Controller
                     }
                 }
 
-                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements, $aiConversation->type);
+                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements, $aiConversation->type ?? 'tags');
                 $phpCode = $result['php_code'];
                 Log::info('[AI Conversation] TEST_ORDER step: PHP generated', ['php_code_length' => strlen($phpCode)]);
             } else {
@@ -210,7 +210,8 @@ class AiConversationController extends Controller
             }
 
             // Execute based on conversation type
-            if ($aiConversation->type === 'tags') {
+            $conversationType = $aiConversation->type ?? 'tags';
+            if ($conversationType === 'tags') {
                 $taggingEngine = new TaggingEngineService();
                 $result = $taggingEngine->executePhpRule($phpCode, $order, $store);
                 Log::info('[AI Conversation] TEST_ORDER response', [
@@ -225,7 +226,7 @@ class AiConversationController extends Controller
                     'tags' => $result,
                     'php_code' => $phpCode,
                 ]);
-            } elseif ($aiConversation->type === 'metafields') {
+            } elseif ($conversationType === 'metafields') {
                 $metafieldsService = new \App\Services\MetafieldsExecutionService();
                 $metafields = $metafieldsService->executePhpRule($phpCode, $order, $store);
                 Log::info('[AI Conversation] TEST_ORDER response (metafields)', [
@@ -239,7 +240,7 @@ class AiConversationController extends Controller
                     'metafields' => $metafields,
                     'php_code' => $phpCode,
                 ]);
-            } elseif ($aiConversation->type === 'recharge') {
+            } elseif ($conversationType === 'recharge') {
                 $rechargeService = new \App\Services\RechargeExecutionService();
                 $subscriptionUpdates = $rechargeService->executePhpRule($phpCode, $order, $store);
                 Log::info('[AI Conversation] TEST_ORDER response (recharge)', [
@@ -317,7 +318,7 @@ class AiConversationController extends Controller
         }
 
         try {
-            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type);
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type ?? 'tags');
             return response()->json([
                 'success' => true,
                 'php_code' => $result['php_code'],
@@ -354,7 +355,7 @@ class AiConversationController extends Controller
         }
 
         // Only allow saving for 'tags' type
-        if ($aiConversation->type !== 'tags') {
+        if (($aiConversation->type ?? 'tags') !== 'tags') {
             return response()->json([
                 'success' => false,
                 'error' => 'Saving rules is only available for Tags type. For Metafields and Recharge, use the Test functionality.',
@@ -462,7 +463,7 @@ class AiConversationController extends Controller
                 ], 422);
             }
 
-            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type);
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type ?? 'tags');
             $phpCode = $result['php_code'];
 
             // Generate rule name and description using AI

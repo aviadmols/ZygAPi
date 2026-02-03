@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Generate PHP Rule') }} - {{ ucfirst($aiConversation->type) }}
+                {{ __('Generate PHP Rule') }} - {{ ucfirst($aiConversation->type ?? 'tags') }}
             </h2>
             <a href="{{ route('ai-conversations.index') }}" class="text-gray-600 hover:text-gray-900">Back to List</a>
         </div>
@@ -20,16 +20,16 @@
                     <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <h3 class="text-sm font-semibold text-gray-800 mb-3">1. Prompt and sample order</h3>
                         <label for="prompt-input" class="block text-sm font-medium text-gray-700 mb-1">
-                            @if($aiConversation->type === 'tags')
+                            @if(($aiConversation->type ?? 'tags') === 'tags')
                                 Prompt (what to check and which tags to return)
-                            @elseif($aiConversation->type === 'metafields')
+                            @elseif(($aiConversation->type ?? 'tags') === 'metafields')
                                 Prompt (what metafields to set and their values, e.g. fulfillment_date based on order date + 12 days)
-                            @elseif($aiConversation->type === 'recharge')
+                            @elseif(($aiConversation->type ?? 'tags') === 'recharge')
                                 Prompt (what subscription settings to update, e.g. next_charge_scheduled_at, quantity, etc.)
                             @endif
                         </label>
                         <textarea id="prompt-input" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-3"
-                            placeholder="@if($aiConversation->type === 'tags')e.g. Tag subscription vs one-time, add order_count from customer API, box from SKU (14D/28D + gram), Flow from line item property _Flow, high_ltv if total > 200@elseif($aiConversation->type === 'metafields')e.g. Set fulfillment_date to order date + 12 days in format YYYY-MM-DDT12:00:00Z@elseif($aiConversation->type === 'recharge')e.g. Update next_charge_scheduled_at to 30 days from now, update quantity to 2@endif"></textarea>
+                            placeholder="@if(($aiConversation->type ?? 'tags') === 'tags')e.g. Tag subscription vs one-time, add order_count from customer API, box from SKU (14D/28D + gram), Flow from line item property _Flow, high_ltv if total > 200@elseif(($aiConversation->type ?? 'tags') === 'metafields')e.g. Set fulfillment_date to order date + 12 days in format YYYY-MM-DDT12:00:00Z@elseif(($aiConversation->type ?? 'tags') === 'recharge')e.g. Update next_charge_scheduled_at to 30 days from now, update quantity to 2@endif"></textarea>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Sample order (required for Generate PHP)</label>
                         <p class="text-xs text-gray-500 mb-2">Paste order JSON or fetch by order number so the AI can tailor the code.</p>
                         <textarea id="order-data" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm mb-2"
@@ -51,7 +51,7 @@
                         <h3 class="text-sm font-semibold text-gray-800 mb-2">2. PHP Rule</h3>
                         <p class="text-xs text-gray-600 mb-2">Generated code appears here. Edit if needed, then use Test below.</p>
                         <textarea id="php-rule-edit" rows="18" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
-                            placeholder="@if($aiConversation->type === 'tags')$tags = [];&#10;if (empty($order) || empty($order['line_items'])) { ... }@elseif($aiConversation->type === 'metafields')$metafields = [];&#10;$metafields['custom']['fulfillment_date'] = date('Y-m-d\TH:i:s\Z', strtotime($order['created_at'] . ' +12 days'));@elseif($aiConversation->type === 'recharge')$subscriptionUpdates = [];&#10;$subscriptionUpdates['next_charge_scheduled_at'] = date('Y-m-d', strtotime('+30 days'));@endif"></textarea>
+                            placeholder="@if(($aiConversation->type ?? 'tags') === 'tags')$tags = [];&#10;if (empty($order) || empty($order['line_items'])) { ... }@elseif(($aiConversation->type ?? 'tags') === 'metafields')$metafields = [];&#10;$metafields['custom']['fulfillment_date'] = date('Y-m-d\TH:i:s\Z', strtotime($order['created_at'] . ' +12 days'));@elseif(($aiConversation->type ?? 'tags') === 'recharge')$subscriptionUpdates = [];&#10;$subscriptionUpdates['next_charge_scheduled_at'] = date('Y-m-d', strtotime('+30 days'));@endif"></textarea>
                     </div>
 
                     <!-- Test -->
@@ -72,7 +72,7 @@
                     </div>
 
                     <!-- Save Rule to Tagging Rules (only for tags type) -->
-                    @if($aiConversation->type === 'tags')
+                    @if(($aiConversation->type ?? 'tags') === 'tags')
                     <div class="mb-4">
                         <form id="generate-rule-form">
                             @csrf
@@ -85,9 +85,9 @@
                     @else
                     <div class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                         <p class="text-sm text-gray-700 mb-2">
-                            @if($aiConversation->type === 'metafields')
+                            @if(($aiConversation->type ?? 'tags') === 'metafields')
                                 This rule will update order metafields. Use the Test button above to verify it works with a specific order number.
-                            @elseif($aiConversation->type === 'recharge')
+                            @elseif(($aiConversation->type ?? 'tags') === 'recharge')
                                 This rule will update Recharge subscription settings. Use the Test button above to verify it works with a specific order number.
                             @endif
                         </p>
@@ -258,7 +258,7 @@
                         body: JSON.stringify(body)
                     });
                     const data = await response.json();
-                    const conversationType = '{{ $aiConversation->type }}';
+                    const conversationType = '{{ $aiConversation->type ?? 'tags' }}';
                     debugLog('TEST_ORDER – Response', { success: data.success, data: data, error: data.error || null });
                     if (data.success) {
                         let html = '';
