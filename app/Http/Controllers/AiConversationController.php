@@ -180,7 +180,18 @@ class AiConversationController extends Controller
             $store = $aiConversation->store;
             $shopifyService = new ShopifyService($store);
             $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
-            Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $order['id'] ?? $validated['order_id']]);
+            $orderId = $order['id'] ?? $validated['order_id'];
+            Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $orderId]);
+            
+            // Collect API call logs
+            $apiLogs = [
+                'shopify_order' => [
+                    'order_id' => $orderId,
+                    'order_number' => $order['order_number'] ?? $order['name'] ?? null,
+                    'order_data' => $order,
+                ],
+                'recharge_calls' => [],
+            ];
 
             $phpCode = trim($validated['php_code'] ?? '');
             if ($phpCode === '') {
@@ -217,6 +228,7 @@ class AiConversationController extends Controller
                     'success' => true,
                     'tags' => $result,
                     'php_code' => $phpCode,
+                    'api_logs' => $apiLogs,
                 ]);
             } elseif ($type === 'metafields') {
                 $metafields = [];
@@ -280,12 +292,52 @@ class AiConversationController extends Controller
                             : 'No metafields were set by the code.',
                     ],
                     'php_code' => $phpCode,
+                    'api_logs' => $apiLogs,
                 ]);
             } elseif ($type === 'recharge') {
                 $subscriptionUpdates = [];
                 $shopDomain = $store->shopify_store_url;
                 $accessToken = $store->shopify_access_token;
                 $rechargeAccessToken = $store->recharge_access_token ?? '';
+                
+                // Check if code makes Recharge API calls and intercept them
+                $rechargeCalls = [];
+                if ($rechargeAccessToken && preg_match('/api\.rechargeapps\.com/i', $phpCode)) {
+                    // Try to find subscription calls
+                    try {
+                        $rechargeService = new \App\Services\RechargeService($store);
+                        // Try to get subscriptions for this order
+                        $subscriptions = [];
+                        try {
+                            $url = "https://api.rechargeapps.com/subscriptions?shopify_order_id={$orderId}";
+                            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                                'X-Recharge-Access-Token' => $rechargeAccessToken,
+                                'Content-Type' => 'application/json',
+                            ])->get($url);
+                            
+                            $apiLogs['recharge_calls'][] = [
+                                'url' => $url,
+                                'method' => 'GET',
+                                'status' => $response->status(),
+                                'response' => $response->json(),
+                            ];
+                            
+                            if ($response->successful()) {
+                                $data = $response->json();
+                                $subscriptions = $data['subscriptions'] ?? [];
+                            }
+                        } catch (\Throwable $e) {
+                            $apiLogs['recharge_calls'][] = [
+                                'url' => $url ?? 'N/A',
+                                'method' => 'GET',
+                                'error' => $e->getMessage(),
+                            ];
+                        }
+                    } catch (\Throwable $e) {
+                        // Ignore
+                    }
+                }
+                
                 // Remove <?php tag if present for eval()
                 $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
                 $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
@@ -317,6 +369,7 @@ class AiConversationController extends Controller
                             : 'No subscription updates were set by the code.',
                     ],
                     'php_code' => $phpCode,
+                    'api_logs' => $apiLogs,
                 ]);
             }
         } catch (\Throwable $e) {

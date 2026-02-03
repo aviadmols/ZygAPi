@@ -246,6 +246,19 @@
                     const data = await response.json();
                     const conversationType = '{{ $aiConversation->type ?? "tags" }}';
                     debugLog('TEST_ORDER – Response', data);
+                    
+                    // Log API information
+                    if (data.api_logs) {
+                        debugLog('SHOPIFY ORDER DATA', {
+                            order_id: data.api_logs.shopify_order?.order_id,
+                            order_number: data.api_logs.shopify_order?.order_number,
+                            order_data: data.api_logs.shopify_order?.order_data
+                        });
+                        
+                        if (data.api_logs.recharge_calls && data.api_logs.recharge_calls.length > 0) {
+                            debugLog('RECHARGE API CALLS', data.api_logs.recharge_calls);
+                        }
+                    }
                     if (data.success) {
                         let html = '';
                         
