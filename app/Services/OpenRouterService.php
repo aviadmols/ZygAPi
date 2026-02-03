@@ -334,6 +334,7 @@ Rules:
 - Fetch data from {$platform} based on \$input (e.g. order_id -> GET order, subscription_id -> GET subscription).
 - Implement the logic described in the prompt.
 - Set a variable \$response = [] with the expected return keys. The endpoint will JSON-encode \$response.
+- IMPORTANT: If the expected return includes 'updated' (or similar), set it to true ONLY when the update API call actually succeeded (e.g. HTTP 2xx). If the API call failed or returned an error, set updated to false and include any error info in the response so the caller knows the update did not happen.
 - Use PUT when updating existing resources, POST when creating or when the docs say POST. Set \$httpMethod = 'POST' or 'PUT' at the end of your code so the endpoint knows which method to document.
 - Do not use <?php or exit or echo. You may use return; to exit early.";
 

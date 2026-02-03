@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomEndpoint;
+use App\Models\CustomEndpointLog;
 use App\Models\Store;
 use App\Services\OpenRouterService;
 use Illuminate\Http\Request;
@@ -156,6 +157,14 @@ class CustomEndpointController extends Controller
             eval($code);
             $log[] = ['step' => 'Code executed successfully', 'duration_ms' => round((microtime(true) - $start) * 1000)];
             $log[] = ['step' => 'Response', 'response' => $response];
+            $responseData = is_array($response) ? $response : ['data' => $response];
+            CustomEndpointLog::create([
+                'custom_endpoint_id' => $customEndpoint->id,
+                'source' => 'test',
+                'request_input' => $input,
+                'response_data' => $responseData,
+                'success' => true,
+            ]);
             return response()->json([
                 'success' => true,
                 'response' => $response,
@@ -164,6 +173,14 @@ class CustomEndpointController extends Controller
         } catch (\Throwable $e) {
             $log[] = ['step' => 'Error', 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine(), 'duration_ms' => round((microtime(true) - $start) * 1000)];
             Log::error('CustomEndpoint test error', ['id' => $customEndpoint->id, 'error' => $e->getMessage()]);
+            CustomEndpointLog::create([
+                'custom_endpoint_id' => $customEndpoint->id,
+                'source' => 'test',
+                'request_input' => $input,
+                'response_data' => null,
+                'success' => false,
+                'error_message' => $e->getMessage(),
+            ]);
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -199,11 +216,27 @@ class CustomEndpointController extends Controller
         $response = [];
         try {
             eval($code);
+            $responseData = is_array($response) ? $response : ['data' => $response];
+            $jsonResponse = array_merge(['success' => true], $responseData);
+            CustomEndpointLog::create([
+                'custom_endpoint_id' => $endpoint->id,
+                'source' => 'webhook',
+                'request_input' => $input,
+                'response_data' => $responseData,
+                'success' => true,
+            ]);
+            return response()->json($jsonResponse);
         } catch (\Throwable $e) {
             Log::error('CustomEndpoint execute error', ['slug' => $slug, 'error' => $e->getMessage()]);
+            CustomEndpointLog::create([
+                'custom_endpoint_id' => $endpoint->id,
+                'source' => 'webhook',
+                'request_input' => $input,
+                'response_data' => null,
+                'success' => false,
+                'error_message' => $e->getMessage(),
+            ]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        return response()->json(array_merge(['success' => true], is_array($response) ? $response : ['data' => $response]));
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CustomEndpointLog;
 use App\Models\TaggingRuleLog;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -9,7 +10,7 @@ use Illuminate\View\View;
 class TaggingRuleLogController extends Controller
 {
     /**
-     * Dashboard: list of webhook/tagging invocations (timestamp, order number, tags).
+     * Dashboard: list of webhook/tagging invocations and custom endpoint calls.
      */
     public function index(Request $request): View
     {
@@ -25,6 +26,15 @@ class TaggingRuleLogController extends Controller
 
         $logs = $query->paginate(50);
 
-        return view('tagging-rule-logs.index', compact('logs'));
+        $customEndpointLogsQuery = CustomEndpointLog::with('customEndpoint.store')
+            ->latest();
+
+        if ($request->filled('endpoint_id')) {
+            $customEndpointLogsQuery->where('custom_endpoint_id', $request->endpoint_id);
+        }
+
+        $customEndpointLogs = $customEndpointLogsQuery->paginate(50, ['*'], 'endpoint_page');
+
+        return view('tagging-rule-logs.index', compact('logs', 'customEndpointLogs'));
     }
 }

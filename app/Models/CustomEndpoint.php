@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class CustomEndpoint extends Model
@@ -31,6 +32,11 @@ class CustomEndpoint extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(CustomEndpointLog::class);
     }
 
     public static function generateSlug(string $name): string
