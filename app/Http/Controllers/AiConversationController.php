@@ -53,13 +53,11 @@ class AiConversationController extends Controller
     {
         $validated = $request->validate([
             'store_id' => 'required|exists:stores,id',
-            'type' => 'required|in:tags,metafields,recharge',
         ]);
 
         $conversation = AiConversation::create([
             'store_id' => $validated['store_id'],
             'user_id' => auth()->id(),
-            'type' => $validated['type'],
             'messages' => [],
         ]);
 
@@ -155,21 +153,12 @@ class AiConversationController extends Controller
      */
     public function testOrder(Request $request, AiConversation $aiConversation): JsonResponse
     {
-        $type = $aiConversation->type ?? 'tags';
-        
         try {
-            if ($type === 'recharge') {
-                $validated = $request->validate([
-                    'subscription_id' => 'required|string',
-                    'php_code' => 'nullable|string',
-                ]);
-            } else {
-                $validated = $request->validate([
-                    'order_id' => 'required|string',
-                    'order_data' => 'nullable|string',
-                    'php_code' => 'nullable|string',
-                ]);
-            }
+            $validated = $request->validate([
+                'order_id' => 'required|string',
+                'order_data' => 'nullable|string',
+                'php_code' => 'nullable|string',
+            ]);
         } catch (ValidationException $e) {
             Log::warning('[AI Conversation] TEST_ORDER validation failed', ['conversation_id' => $aiConversation->id, 'error' => $e->getMessage()]);
             return response()->json([
@@ -180,120 +169,16 @@ class AiConversationController extends Controller
 
         Log::info('[AI Conversation] TEST_ORDER request', [
             'conversation_id' => $aiConversation->id,
-            'type' => $type,
-            'order_id' => $validated['order_id'] ?? null,
-            'subscription_id' => $validated['subscription_id'] ?? null,
-            'has_order_data' => !empty($validated['order_data'] ?? null),
+            'order_id' => $validated['order_id'],
+            'has_order_data' => !empty($validated['order_data']),
             'has_php_code' => !empty(trim($validated['php_code'] ?? '')),
         ]);
 
         try {
             $store = $aiConversation->store;
-            
-            if ($type === 'recharge') {
-                // For recharge, fetch subscription from Recharge API
-                $subscriptionId = $validated['subscription_id'];
-                $rechargeAccessToken = $store->recharge_access_token ?? '';
-                
-                if (!$rechargeAccessToken) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Recharge access token not configured for this store.',
-                    ], 422);
-                }
-                
-                try {
-                    $subscriptionUrl = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
-                    $subscriptionResponse = \Illuminate\Support\Facades\Http::withHeaders([
-                        'X-Recharge-Access-Token' => $rechargeAccessToken,
-                        'Content-Type' => 'application/json',
-                    ])->get($subscriptionUrl);
-                    
-                    if ($subscriptionResponse->failed()) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Failed to fetch subscription from Recharge API: ' . $subscriptionResponse->status(),
-                        ], 422);
-                    }
-                    
-                    $subscription = $subscriptionResponse->json()['subscription'] ?? null;
-                    if (!$subscription) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Subscription not found in Recharge API response.',
-                        ], 422);
-                    }
-                    
-                    Log::info('[AI Conversation] TEST_ORDER step: subscription fetched', ['subscription_id' => $subscriptionId]);
-                    
-                    // Create a mock order structure from subscription for compatibility
-                    $order = [
-                        'id' => $subscription['shopify_order_id'] ?? $subscriptionId,
-                        'name' => $subscription['order_name'] ?? null,
-                        'customer' => [
-                            'id' => $subscription['customer_id'] ?? null,
-                            'email' => $subscription['email'] ?? null,
-                        ],
-                        'line_items' => [],
-                        'tags' => '',
-                        'created_at' => $subscription['created_at'] ?? null,
-                    ];
-                    $orderId = $subscription['shopify_order_id'] ?? $subscriptionId;
-                    
-                    // Collect API call logs
-                    $apiLogs = [
-                        'recharge_subscription' => [
-                            'subscription_id' => $subscriptionId,
-                            'status' => $subscription['status'] ?? null,
-                            'next_charge_scheduled_at' => $subscription['next_charge_scheduled_at'] ?? null,
-                            'next_order_scheduled_at' => $subscription['next_order_scheduled_at'] ?? null,
-                            'quantity' => $subscription['quantity'] ?? null,
-                            'shopify_order_id' => $subscription['shopify_order_id'] ?? null,
-                        ],
-                        'recharge_calls' => [
-                            [
-                                'url' => $subscriptionUrl,
-                                'method' => 'GET',
-                                'status' => $subscriptionResponse->status(),
-                            ]
-                        ],
-                    ];
-                } catch (\Throwable $e) {
-                    Log::error('[AI Conversation] TEST_ORDER: Failed to fetch subscription', ['error' => $e->getMessage()]);
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Failed to fetch subscription: ' . $e->getMessage(),
-                    ], 422);
-                }
-            } else {
-                // For tags/metafields, fetch order from Shopify
-                $shopifyService = new ShopifyService($store);
-                $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
-                $orderId = $order['id'] ?? $validated['order_id'];
-                Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $orderId]);
-                
-                // Collect API call logs - only essential information
-                $apiLogs = [
-                    'shopify_order' => [
-                        'order_id' => $orderId,
-                        'order_number' => $order['order_number'] ?? $order['name'] ?? null,
-                        'customer_email' => $order['customer']['email'] ?? null,
-                        'line_items_count' => count($order['line_items'] ?? []),
-                        'line_items_summary' => array_map(function($item) {
-                            return [
-                                'id' => $item['id'] ?? null,
-                                'title' => $item['title'] ?? null,
-                                'sku' => $item['sku'] ?? null,
-                                'quantity' => $item['quantity'] ?? null,
-                                'properties' => $item['properties'] ?? [],
-                            ];
-                        }, array_slice($order['line_items'] ?? [], 0, 5)), // Only first 5 items
-                        'tags' => $order['tags'] ?? null,
-                        'created_at' => $order['created_at'] ?? null,
-                    ],
-                    'recharge_calls' => [],
-                ];
-            }
+            $shopifyService = new ShopifyService($store);
+            $order = $shopifyService->getOrderByIdOrNumber($validated['order_id']);
+            Log::info('[AI Conversation] TEST_ORDER step: order fetched', ['order_id' => $order['id'] ?? $validated['order_id']]);
 
             $phpCode = trim($validated['php_code'] ?? '');
             if ($phpCode === '') {
@@ -307,173 +192,35 @@ class AiConversationController extends Controller
                 }
                 Log::info('[AI Conversation] TEST_ORDER step: user_requirements length', ['length' => strlen($userRequirements)]);
 
-                if ($type === 'recharge') {
-                    // For recharge, use subscription data as sample
-                    $orderSample = $subscription ?? $order;
-                } else {
-                    $orderSample = $order;
-                    if (!empty($validated['order_data'])) {
-                        $decoded = json_decode($validated['order_data'], true);
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            $orderSample = $decoded;
-                        }
+                $orderSample = $order;
+                if (!empty($validated['order_data'])) {
+                    $decoded = json_decode($validated['order_data'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $orderSample = $decoded;
                     }
                 }
 
-                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements, $type);
+                $result = $this->openRouterService->generatePhpRule($orderSample, $userRequirements);
                 $phpCode = $result['php_code'];
                 Log::info('[AI Conversation] TEST_ORDER step: PHP generated', ['php_code_length' => strlen($phpCode)]);
             } else {
                 Log::info('[AI Conversation] TEST_ORDER step: using provided php_code', ['php_code_length' => strlen($phpCode)]);
             }
-            if ($type === 'tags') {
-                $taggingEngine = new TaggingEngineService();
-                $result = $taggingEngine->executePhpRule($phpCode, $order, $store);
-                return response()->json([
-                    'success' => true,
-                    'tags' => $result,
-                    'php_code' => $phpCode,
-                    'api_logs' => $apiLogs,
-                ]);
-            } elseif ($type === 'metafields') {
-                $metafields = [];
-                $shopDomain = $store->shopify_store_url;
-                $accessToken = $store->shopify_access_token;
-                // Remove <?php tag if present for eval()
-                $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
-                $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
-                try {
-                    eval($codeToEval);
-                } catch (\Throwable $e) {
-                    Log::error('Metafields PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
-                    throw new \Exception("PHP execution error: " . $e->getMessage());
-                }
-                
-                $metafieldsResult = $metafields ?? [];
-                $metafieldsList = [];
-                foreach ($metafieldsResult as $key => $value) {
-                    // Support both formats: $metafields['namespace']['key'] and $metafields['namespace.key']
-                    if (is_array($value)) {
-                        // Format: $metafields['namespace']['key'] = value
-                        foreach ($value as $subKey => $subValue) {
-                            $metafieldsList[] = [
-                                'namespace' => $key,
-                                'key' => $subKey,
-                                'value' => $subValue,
-                                'full_key' => "{$key}.{$subKey}",
-                            ];
-                        }
-                    } else {
-                        // Format: $metafields['namespace.key'] = value
-                        if (strpos($key, '.') !== false) {
-                            list($namespace, $metaKey) = explode('.', $key, 2);
-                            $metafieldsList[] = [
-                                'namespace' => $namespace,
-                                'key' => $metaKey,
-                                'value' => $value,
-                                'full_key' => $key,
-                            ];
-                        } else {
-                            // Fallback: treat as key without namespace
-                            $metafieldsList[] = [
-                                'namespace' => 'custom',
-                                'key' => $key,
-                                'value' => $value,
-                                'full_key' => "custom.{$key}",
-                            ];
-                        }
-                    }
-                }
-                
-                return response()->json([
-                    'success' => true,
-                    'metafields' => $metafieldsResult,
-                    'metafields_list' => $metafieldsList,
-                    'summary' => [
-                        'total_metafields' => count($metafieldsList),
-                        'namespaces' => array_keys($metafieldsResult),
-                        'message' => count($metafieldsList) > 0 
-                            ? 'Metafields calculated successfully. ' . count($metafieldsList) . ' metafield(s) would be updated.'
-                            : 'No metafields were set by the code.',
-                    ],
-                    'php_code' => $phpCode,
-                    'api_logs' => $apiLogs,
-                ]);
-            } elseif ($type === 'recharge') {
-                $subscriptionUpdates = [];
-                $shopDomain = $store->shopify_store_url;
-                $accessToken = $store->shopify_access_token;
-                $rechargeAccessToken = $store->recharge_access_token ?? '';
-                
-                // Remove <?php tag if present for eval()
-                $codeToEval = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
-                $codeToEval = preg_replace('/\?>\s*$/i', '', $codeToEval);
-                
-                // Make subscription data available to the eval'd code
-                // $subscription variable is already set from the fetch above
-                // Also make $order available for compatibility (it contains subscription data mapped to order structure)
-                
-                try {
-                    // Execute code with subscription and order data available
-                    eval($codeToEval);
-                } catch (\Throwable $e) {
-                    Log::error('Recharge PHP execution error', ['error' => $e->getMessage(), 'code' => $codeToEval]);
-                    throw new \Exception("PHP execution error: " . $e->getMessage());
-                }
-                
-                // Check if code contains PUT requests to Recharge API
-                if ($rechargeAccessToken && preg_match('/->put\(/i', $phpCode)) {
-                    // Extract PUT URLs from code
-                    preg_match_all('/->put\([\'"]([^\'"]+)[\'"]/i', $phpCode, $putMatches);
-                    if (!empty($putMatches[1])) {
-                        foreach ($putMatches[1] as $putUrl) {
-                            if (strpos($putUrl, 'api.rechargeapps.com') !== false) {
-                                $apiLogs['recharge_calls'][] = [
-                                    'url' => $putUrl,
-                                    'method' => 'PUT',
-                                    'note' => 'PUT request detected in generated code',
-                                ];
-                            }
-                        }
-                    }
-                }
-                
-                // Log what PUT call would be made based on subscriptionUpdates
-                if (!empty($subscriptionUpdates) && $rechargeAccessToken) {
-                    $putUrl = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
-                    // Log what PUT call would be made
-                    $apiLogs['recharge_calls'][] = [
-                        'url' => $putUrl,
-                        'method' => 'PUT',
-                        'request_body' => ['subscription' => $subscriptionUpdates],
-                        'note' => 'This PUT call would be made with the calculated updates',
-                    ];
-                }
-                
-                $updatesResult = $subscriptionUpdates ?? [];
-                $updatesList = [];
-                foreach ($updatesResult as $field => $value) {
-                    $updatesList[] = [
-                        'field' => $field,
-                        'value' => $value,
-                    ];
-                }
-                
-                return response()->json([
-                    'success' => true,
-                    'subscription_updates' => $updatesResult,
-                    'updates_list' => $updatesList,
-                    'summary' => [
-                        'total_updates' => count($updatesList),
-                        'fields' => array_keys($updatesResult),
-                        'message' => count($updatesList) > 0 
-                            ? 'Subscription updates calculated successfully. ' . count($updatesList) . ' field(s) would be updated.'
-                            : 'No subscription updates were set by the code.',
-                    ],
-                    'php_code' => $phpCode,
-                    'api_logs' => $apiLogs,
-                ]);
-            }
+
+            $taggingEngine = new TaggingEngineService();
+            $tags = $taggingEngine->executePhpRule($phpCode, $order, $store);
+            Log::info('[AI Conversation] TEST_ORDER response', [
+                'conversation_id' => $aiConversation->id,
+                'success' => true,
+                'tags_count' => count($tags),
+                'tags' => $tags,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'tags' => $tags,
+                'php_code' => $phpCode,
+            ]);
         } catch (\Throwable $e) {
             Log::warning('[AI Conversation] TEST_ORDER response ERROR', [
                 'conversation_id' => $aiConversation->id,
@@ -492,21 +239,11 @@ class AiConversationController extends Controller
      */
     public function generatePhp(Request $request, AiConversation $aiConversation): JsonResponse
     {
-        $type = $aiConversation->type ?? 'tags';
-        
-        if ($type === 'recharge') {
-            $validated = $request->validate([
-                'requirements' => 'nullable|string',
-                'subscription_data' => 'nullable|string',
-                'subscription_id' => 'nullable|string',
-            ]);
-        } else {
-            $validated = $request->validate([
-                'requirements' => 'nullable|string',
-                'order_data' => 'nullable|string',
-                'order_id' => 'nullable|string',
-            ]);
-        }
+        $validated = $request->validate([
+            'requirements' => 'nullable|string',
+            'order_data' => 'nullable|string',
+            'order_id' => 'nullable|string',
+        ]);
 
         $userRequirements = trim($validated['requirements'] ?? '') ?: $this->getUserRequirementsFromConversation($aiConversation);
         if (empty($userRequirements)) {
@@ -517,102 +254,37 @@ class AiConversationController extends Controller
         }
 
         $orderData = null;
-        
-        if ($type === 'recharge') {
-            // For recharge, fetch subscription from Recharge API
-            if (!empty($validated['subscription_data'])) {
-                $orderData = json_decode($validated['subscription_data'], true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Invalid JSON in subscription_data.',
-                    ], 422);
-                }
-            }
-            if ($orderData === null && !empty($validated['subscription_id'] ?? '')) {
-                try {
-                    $store = $aiConversation->store;
-                    $rechargeAccessToken = $store->recharge_access_token ?? '';
-                    
-                    if (!$rechargeAccessToken) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Recharge access token not configured for this store.',
-                        ], 422);
-                    }
-                    
-                    $subscriptionId = trim($validated['subscription_id']);
-                    $subscriptionUrl = "https://api.rechargeapps.com/subscriptions/{$subscriptionId}";
-                    $subscriptionResponse = \Illuminate\Support\Facades\Http::withHeaders([
-                        'X-Recharge-Access-Token' => $rechargeAccessToken,
-                        'Content-Type' => 'application/json',
-                    ])->get($subscriptionUrl);
-                    
-                    if ($subscriptionResponse->failed()) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Could not fetch subscription: HTTP ' . $subscriptionResponse->status(),
-                        ], 422);
-                    }
-                    
-                    $subscription = $subscriptionResponse->json()['subscription'] ?? null;
-                    if (!$subscription) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'Subscription not found in Recharge API response.',
-                        ], 422);
-                    }
-                    
-                    // Use subscription data as orderData for AI generation
-                    $orderData = $subscription;
-                } catch (\Throwable $e) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Could not fetch subscription: ' . $e->getMessage(),
-                    ], 422);
-                }
-            }
-            
-            if ($orderData === null) {
+        if (!empty($validated['order_data'])) {
+            $orderData = json_decode($validated['order_data'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Provide a sample subscription: paste Subscription JSON or enter Subscription ID to fetch.',
+                    'error' => 'Invalid JSON in order_data.',
                 ], 422);
             }
-        } else {
-            // For tags/metafields, fetch order from Shopify
-            if (!empty($validated['order_data'])) {
-                $orderData = json_decode($validated['order_data'], true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Invalid JSON in order_data.',
-                    ], 422);
-                }
-            }
-            if ($orderData === null && !empty($validated['order_id'] ?? '')) {
-                try {
-                    $store = $aiConversation->store;
-                    $shopifyService = new ShopifyService($store);
-                    $orderData = $shopifyService->getOrderByIdOrNumber(trim($validated['order_id']));
-                } catch (\Throwable $e) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Could not fetch order: ' . $e->getMessage(),
-                    ], 422);
-                }
-            }
-            
-            if ($orderData === null) {
+        }
+        if ($orderData === null && !empty($validated['order_id'] ?? '')) {
+            try {
+                $store = $aiConversation->store;
+                $shopifyService = new ShopifyService($store);
+                $orderData = $shopifyService->getOrderByIdOrNumber(trim($validated['order_id']));
+            } catch (\Throwable $e) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Provide a sample order: paste Order JSON or enter Order number to fetch.',
+                    'error' => 'Could not fetch order: ' . $e->getMessage(),
                 ], 422);
             }
         }
 
+        if ($orderData === null) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Provide a sample order: paste Order JSON or enter Order number to fetch.',
+            ], 422);
+        }
+
         try {
-            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $type);
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
             return response()->json([
                 'success' => true,
                 'php_code' => $result['php_code'],
@@ -645,14 +317,6 @@ class AiConversationController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Validation failed: ' . implode(' ', $e->validator->errors()->all()),
-            ], 422);
-        }
-
-        // Only allow saving for 'tags' type
-        if (($aiConversation->type ?? 'tags') !== 'tags') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Saving rules is only available for Tags type. For Metafields and Recharge, use the Test functionality.',
             ], 422);
         }
 
@@ -749,15 +413,7 @@ class AiConversationController extends Controller
         ]);
 
         try {
-            // Only create TaggingRule for 'tags' type
-            if (($aiConversation->type ?? 'tags') !== 'tags') {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Saving rules is only available for Tags type. For Metafields and Recharge, use the Test functionality.',
-                ], 422);
-            }
-
-            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements, $aiConversation->type ?? 'tags');
+            $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
             $phpCode = $result['php_code'];
 
             // Generate rule name and description using AI
@@ -805,107 +461,6 @@ class AiConversationController extends Controller
                 'success' => false,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Analyze test log with AI to get recommendations
-     */
-    public function analyzeTestLog(Request $request, AiConversation $aiConversation): JsonResponse
-    {
-        $validated = $request->validate([
-            'log_content' => 'required|string',
-            'php_code' => 'required|string',
-            'prompt' => 'nullable|string',
-        ]);
-
-        try {
-            $conversationType = $aiConversation->type ?? 'tags';
-            $typeContext = $conversationType === 'metafields' 
-                ? 'Shopify order metafields' 
-                : ($conversationType === 'recharge' 
-                    ? 'Recharge subscription updates' 
-                    : 'Shopify order tags');
-
-            $systemPrompt = "You are an expert at debugging PHP code for {$typeContext} in Zyg Automations.
-
-Analyze the provided test log, PHP code, and user prompt. Identify any issues, errors, or potential improvements.
-
-Provide your analysis in JSON format:
-{
-  \"issues\": [\"issue1\", \"issue2\"],
-  \"recommendations\": [\"recommendation1\", \"recommendation2\"],
-  \"suggested_fixes\": \"suggested PHP code fix or explanation\",
-  \"suggested_prompt\": \"improved user prompt that addresses the issues and can be used to regenerate the code\"
-}
-
-The suggested_prompt should be a clear, improved version of the original prompt that:
-- Addresses all identified issues
-- Includes specific requirements and conditions
-- Is ready to use for generating new PHP code
-- Is written in English
-
-Be specific and actionable. Focus on:
-- Syntax errors
-- Logic errors
-- Missing conditions
-- Incorrect data access
-- API call issues
-- Best practices";
-
-            $userPrompt = "User Prompt:\n" . ($validated['prompt'] ?? 'N/A') . "\n\n";
-            $userPrompt .= "PHP Code:\n" . $validated['php_code'] . "\n\n";
-            $userPrompt .= "Test Log:\n" . $validated['log_content'];
-
-            $messages = [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => $userPrompt],
-            ];
-
-            $response = $this->openRouterService->chat($messages);
-            $content = trim($response['content']);
-
-            // Try to extract JSON from response
-            if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
-                $jsonContent = $matches[1];
-            } elseif (preg_match('/```\s*(.*?)\s*```/s', $content, $matches)) {
-                $jsonContent = $matches[1];
-            } else {
-                if (preg_match('/\{.*\}/s', $content, $matches)) {
-                    $jsonContent = $matches[0];
-                } else {
-                    // Fallback: return raw content
-                    return response()->json([
-                        'success' => true,
-                        'analysis' => $content,
-                        'raw' => true,
-                    ]);
-                }
-            }
-
-            $result = json_decode($jsonContent, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return response()->json([
-                    'success' => true,
-                    'analysis' => $content,
-                    'raw' => true,
-                ]);
-            }
-
-            return response()->json([
-                'success' => true,
-                'issues' => $result['issues'] ?? [],
-                'recommendations' => $result['recommendations'] ?? [],
-                'suggested_fixes' => $result['suggested_fixes'] ?? '',
-                'suggested_prompt' => $result['suggested_prompt'] ?? '',
-                'raw' => false,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('AI log analysis error', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),

@@ -50,7 +50,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('ai-conversations', \App\Http\Controllers\AiConversationController::class);
     Route::post('ai-conversations/{ai_conversation}/chat', [\App\Http\Controllers\AiConversationController::class, 'chat'])->name('ai-conversations.chat');
     Route::post('ai-conversations/{ai_conversation}/test-order', [\App\Http\Controllers\AiConversationController::class, 'testOrder'])->name('ai-conversations.test-order');
-    Route::post('ai-conversations/{ai_conversation}/analyze-test-log', [\App\Http\Controllers\AiConversationController::class, 'analyzeTestLog'])->name('ai-conversations.analyze-test-log');
     Route::post('ai-conversations/{ai_conversation}/generate-php', [\App\Http\Controllers\AiConversationController::class, 'generatePhp'])->name('ai-conversations.generate-php');
     Route::post('ai-conversations/{ai_conversation}/generate-rule', [\App\Http\Controllers\AiConversationController::class, 'generateRule'])->name('ai-conversations.generate-rule');
 

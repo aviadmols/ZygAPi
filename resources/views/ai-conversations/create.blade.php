@@ -26,19 +26,6 @@
                             @enderror
                         </div>
 
-                        <div class="mb-4">
-                            <label for="type" class="block text-sm font-medium text-gray-700">Type</label>
-                            <select name="type" id="type" required
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="tags">Tags</option>
-                                <option value="metafields">Metafields</option>
-                                <option value="recharge">Recharge</option>
-                            </select>
-                            @error('type')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
                         <div class="flex items-center justify-end mt-4">
                             <a href="{{ route('ai-conversations.index') }}" class="text-gray-600 hover:text-gray-900 mr-4">Cancel</a>
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">

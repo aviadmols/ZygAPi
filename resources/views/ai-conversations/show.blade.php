@@ -18,17 +18,17 @@
 
                     <!-- Prompt + Sample order + Generate PHP -->
                     <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <h3 class="text-sm font-semibold text-gray-800 mb-3">1. Prompt and sample <span id="sample-type-label">order</span></h3>
+                        <h3 class="text-sm font-semibold text-gray-800 mb-3">1. Prompt and sample order</h3>
                         <label for="prompt-input" class="block text-sm font-medium text-gray-700 mb-1">Prompt (what to check and which tags to return)</label>
                         <textarea id="prompt-input" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-3"
                             placeholder="e.g. Tag subscription vs one-time, add order_count from customer API, box from SKU (14D/28D + gram), Flow from line item property _Flow, high_ltv if total > 200"></textarea>
-                        <label class="block text-sm font-medium text-gray-700 mb-1" id="sample-label">Sample order (required for Generate PHP)</label>
-                        <p class="text-xs text-gray-500 mb-2" id="sample-description">Paste order JSON or fetch by order number so the AI can tailor the code.</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sample order (required for Generate PHP)</label>
+                        <p class="text-xs text-gray-500 mb-2">Paste order JSON or fetch by order number so the AI can tailor the code.</p>
                         <textarea id="order-data" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm mb-2"
                             placeholder='Optional: {"id": "123", "line_items": [...]}'></textarea>
                         <div class="flex flex-wrap items-center gap-4">
                             <div class="min-w-[200px]">
-                                <label for="generate-order-id" class="block text-xs font-medium text-gray-600 mb-1" id="fetch-label">Or fetch by order number</label>
+                                <label for="generate-order-id" class="block text-xs font-medium text-gray-600 mb-1">Or fetch by order number</label>
                                 <input type="text" id="generate-order-id" placeholder="e.g. 1005"
                                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             </div>
@@ -49,10 +49,10 @@
                     <!-- Test -->
                     <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <h3 class="text-sm font-semibold text-gray-800 mb-2">3. Test</h3>
-                        <p class="text-xs text-gray-600 mb-3" id="test-description">Enter an order ID or number. The PHP Rule above will run and show which tags would be applied.</p>
+                        <p class="text-xs text-gray-600 mb-3">Enter an order ID or number. The PHP Rule above will run and show which tags would be applied.</p>
                         <div class="flex flex-wrap items-end gap-4">
                             <div class="flex-1 min-w-[180px]">
-                                <label for="test-order-id" class="block text-sm font-medium text-gray-700 mb-1" id="test-label">Order ID or order number</label>
+                                <label for="test-order-id" class="block text-sm font-medium text-gray-700 mb-1">Order ID or order number</label>
                                 <input type="text" id="test-order-id" placeholder="e.g. 1005 or Shopify order ID"
                                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             </div>
@@ -61,12 +61,6 @@
                             </button>
                         </div>
                         <div id="test-order-results" class="mt-4 hidden"></div>
-                        <div id="analyze-log-section" class="mt-4 hidden">
-                            <button type="button" id="analyze-log-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded text-sm">
-                                Analyze Log with AI
-                            </button>
-                            <div id="analyze-log-results" class="mt-4 hidden"></div>
-                        </div>
                     </div>
 
                     <!-- Save Rule to Tagging Rules -->
@@ -110,33 +104,6 @@
         const generateRuleForm = document.getElementById('generate-rule-form');
         const debugLogEl = document.getElementById('debug-log');
         const debugLogDetails = document.getElementById('debug-log-details');
-        const conversationType = '{{ $aiConversation->type ?? "tags" }}';
-        
-        // Update field labels based on conversation type
-        if (conversationType === 'recharge') {
-            // Update test field labels
-            const testLabel = document.getElementById('test-label');
-            const testDescription = document.getElementById('test-description');
-            const testInput = document.getElementById('test-order-id');
-            if (testLabel) testLabel.textContent = 'Subscription ID';
-            if (testDescription) testDescription.textContent = 'Enter a Recharge subscription ID. The PHP Rule above will run and show which updates would be applied.';
-            if (testInput) testInput.placeholder = 'e.g. 12345 (Recharge subscription ID)';
-            
-            // Update generate PHP field labels
-            const sampleTypeLabel = document.getElementById('sample-type-label');
-            const sampleLabel = document.getElementById('sample-label');
-            const sampleDescription = document.getElementById('sample-description');
-            const fetchLabel = document.getElementById('fetch-label');
-            const generateInput = document.getElementById('generate-order-id');
-            const orderDataInput = document.getElementById('order-data');
-            
-            if (sampleTypeLabel) sampleTypeLabel.textContent = 'subscription';
-            if (sampleLabel) sampleLabel.textContent = 'Sample subscription (required for Generate PHP)';
-            if (sampleDescription) sampleDescription.textContent = 'Paste subscription JSON or fetch by subscription ID so the AI can tailor the code.';
-            if (fetchLabel) fetchLabel.textContent = 'Or fetch by subscription ID';
-            if (generateInput) generateInput.placeholder = 'e.g. 12345';
-            if (orderDataInput) orderDataInput.placeholder = 'Optional: {"id": "123", "status": "ACTIVE", ...}';
-        }
 
         function debugLog(label, obj) {
             if (!debugLogEl) return;
@@ -151,34 +118,19 @@
         if (generatePhpBtn && phpRuleEdit) {
             generatePhpBtn.addEventListener('click', async () => {
                 const requirements = promptInput?.value?.trim() ?? '';
-                const inputData = (orderDataInput?.value ?? '').trim();
-                const inputId = document.getElementById('generate-order-id')?.value?.trim() ?? '';
+                const orderData = (orderDataInput?.value ?? '').trim();
+                const orderId = document.getElementById('generate-order-id')?.value?.trim() ?? '';
                 if (!requirements) {
                     alert('Enter a prompt describing what to check and which tags to return.');
                     return;
                 }
-                if (!inputData && !inputId) {
-                    const errorMsg = conversationType === 'recharge' 
-                        ? 'Provide a sample subscription: paste Subscription JSON or enter a subscription ID to fetch.'
-                        : 'Provide a sample order: paste Order JSON or enter an order number to fetch.';
-                    alert(errorMsg);
+                if (!orderData && !orderId) {
+                    alert('Provide a sample order: paste Order JSON or enter an order number to fetch.');
                     return;
                 }
                 generatePhpBtn.disabled = true;
                 generatePhpBtn.textContent = 'Generating...';
                 try {
-                    const body = conversationType === 'recharge' 
-                        ? {
-                            requirements: requirements,
-                            subscription_data: inputData || null,
-                            subscription_id: inputId || null
-                        }
-                        : {
-                            requirements: requirements,
-                            order_data: inputData || null,
-                            order_id: inputId || null
-                        };
-                    
                     const response = await fetch('{{ route("ai-conversations.generate-php", $aiConversation) }}', {
                         method: 'POST',
                         headers: {
@@ -186,16 +138,17 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
-                        body: JSON.stringify(body)
+                        body: JSON.stringify({
+                            requirements: requirements,
+                            order_data: orderData || null,
+                            order_id: orderId || null
+                        })
                     });
                     const data = await response.json();
                     debugLog('GENERATE_PHP – Response', { success: data.success, php_code_length: data.php_code ? data.php_code.length : 0, error: data.error || null });
                     if (data.success && data.php_code) {
                         phpRuleEdit.value = data.php_code;
-                        const successMsg = conversationType === 'recharge' 
-                            ? 'PHP code generated. Edit if needed, then use Test to see updates for a subscription.'
-                            : 'PHP code generated. Edit if needed, then use Test to see tags for an order.';
-                        alert(successMsg);
+                        alert('PHP code generated. Edit if needed, then use Test to see tags for an order.');
                     } else {
                         alert('Error: ' + (data.error || 'Unknown error'));
                     }
@@ -254,12 +207,9 @@
         const testOrderResults = document.getElementById('test-order-results');
         if (testOrderBtn && testOrderResults) {
             testOrderBtn.addEventListener('click', async () => {
-                const inputValue = document.getElementById('test-order-id')?.value?.trim();
-                if (!inputValue) {
-                    const errorMsg = conversationType === 'recharge' 
-                        ? 'Enter a subscription ID.' 
-                        : 'Enter an order ID or order number.';
-                    testOrderResults.innerHTML = '<p class="text-red-600 text-sm">' + errorMsg + '</p>';
+                const orderId = document.getElementById('test-order-id')?.value?.trim();
+                if (!orderId) {
+                    testOrderResults.innerHTML = '<p class="text-red-600 text-sm">Enter an order ID or order number.</p>';
                     testOrderResults.classList.remove('hidden');
                     return;
                 }
@@ -269,16 +219,11 @@
                     testOrderResults.classList.remove('hidden');
                     return;
                 }
-                const body = conversationType === 'recharge' 
-                    ? {
-                        subscription_id: inputValue,
-                        php_code: phpCodeToSend
-                    }
-                    : {
-                        order_id: inputValue,
-                        order_data: (orderDataInput?.value ?? '').trim() || null,
-                        php_code: phpCodeToSend
-                    };
+                const body = {
+                    order_id: orderId,
+                    order_data: (orderDataInput?.value ?? '').trim() || null,
+                    php_code: phpCodeToSend
+                };
                 debugLog('TEST_ORDER – Request', body);
                 testOrderResults.innerHTML = '<p class="text-gray-500 text-sm">Running test...</p>';
                 testOrderResults.classList.remove('hidden');
@@ -293,213 +238,24 @@
                         body: JSON.stringify(body)
                     });
                     const data = await response.json();
-                    debugLog('TEST_ORDER – Response', { success: data.success, tags: data.tags || data.metafields || data.subscription_updates || null, error: data.error || null });
-                    
-                    // Log API information (condensed)
-                    if (data.api_logs) {
-                        debugLog('SHOPIFY ORDER SUMMARY', {
-                            order_id: data.api_logs.shopify_order?.order_id,
-                            order_number: data.api_logs.shopify_order?.order_number,
-                            customer_email: data.api_logs.shopify_order?.customer_email,
-                            line_items_count: data.api_logs.shopify_order?.line_items_count,
-                            line_items_summary: data.api_logs.shopify_order?.line_items_summary,
-                            tags: data.api_logs.shopify_order?.tags,
-                            created_at: data.api_logs.shopify_order?.created_at
-                        });
-                        
-                        if (data.api_logs.recharge_calls && data.api_logs.recharge_calls.length > 0) {
-                            debugLog('RECHARGE API CALLS', data.api_logs.recharge_calls);
-                        }
-                    }
+                    debugLog('TEST_ORDER – Response', { success: data.success, tags: data.tags || [], error: data.error || null });
                     if (data.success) {
-                        let html = '';
-                        
-                        if (conversationType === 'tags') {
-                            const tags = data.tags || [];
-                            html = '<p class="text-sm font-medium text-gray-700 mb-2">Tags that would be applied:</p>';
-                            if (tags.length) {
-                                html += '<div class="flex flex-wrap gap-2">' + tags.map(t => '<span class="bg-blue-500 text-white px-2 py-1 rounded text-sm">' + (t || '').replace(/</g, '&lt;') + '</span>').join('') + '</div>';
-                            } else {
-                                html += '<p class="text-gray-500 text-sm">No tags.</p>';
-                            }
-                        } else if (conversationType === 'metafields') {
-                            const metafields = data.metafields || {};
-                            const metafieldsList = data.metafields_list || [];
-                            const summary = data.summary || {};
-                            
-                            html = '<div class="bg-green-50 border border-green-200 rounded-lg p-4">';
-                            html += '<p class="text-sm font-semibold text-gray-800 mb-2">' + (summary.message || 'Metafields calculated') + '</p>';
-                            
-                            if (metafieldsList.length > 0) {
-                                html += '<div class="mt-3 space-y-2">';
-                                metafieldsList.forEach(mf => {
-                                    html += '<div class="bg-white border border-gray-200 rounded p-2">';
-                                    html += '<p class="text-xs font-mono text-gray-600">' + mf.full_key.replace(/</g, '&lt;') + '</p>';
-                                    html += '<p class="text-sm text-gray-800 mt-1">' + String(mf.value || '').replace(/</g, '&lt;') + '</p>';
-                                    html += '</div>';
-                                });
-                                html += '</div>';
-                            } else {
-                                html += '<p class="text-gray-500 text-sm mt-2">No metafields were set.</p>';
-                            }
-                            html += '</div>';
-                        } else if (conversationType === 'recharge') {
-                            const updates = data.subscription_updates || {};
-                            const updatesList = data.updates_list || [];
-                            const summary = data.summary || {};
-                            
-                            html = '<div class="bg-purple-50 border border-purple-200 rounded-lg p-4">';
-                            html += '<p class="text-sm font-semibold text-gray-800 mb-2">' + (summary.message || 'Subscription updates calculated') + '</p>';
-                            
-                            if (updatesList.length > 0) {
-                                html += '<div class="mt-3 space-y-2">';
-                                updatesList.forEach(update => {
-                                    html += '<div class="bg-white border border-gray-200 rounded p-2">';
-                                    html += '<p class="text-xs font-semibold text-gray-600">' + update.field.replace(/</g, '&lt;') + '</p>';
-                                    html += '<p class="text-sm text-gray-800 mt-1">' + String(update.value || '').replace(/</g, '&lt;') + '</p>';
-                                    html += '</div>';
-                                });
-                                html += '</div>';
-                            } else {
-                                html += '<p class="text-gray-500 text-sm mt-2">No subscription updates were set.</p>';
-                            }
-                            html += '</div>';
+                        const tags = data.tags || [];
+                        let html = '<p class="text-sm font-medium text-gray-700 mb-2">Tags that would be applied:</p>';
+                        if (tags.length) {
+                            html += '<div class="flex flex-wrap gap-2">' + tags.map(t => '<span class="bg-blue-500 text-white px-2 py-1 rounded text-sm">' + (t || '').replace(/</g, '&lt;') + '</span>').join('') + '</div>';
+                        } else {
+                            html += '<p class="text-gray-500 text-sm">No tags.</p>';
                         }
-                        
                         testOrderResults.innerHTML = html;
-                        // Show analyze log button after successful test
-                        document.getElementById('analyze-log-section')?.classList.remove('hidden');
                     } else {
                         testOrderResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">' + (data.error || 'Error') + '</div>';
-                        // Show analyze log button even on error
-                        document.getElementById('analyze-log-section')?.classList.remove('hidden');
                     }
                 } catch (err) {
                     debugLog('TEST_ORDER – Error', err.message);
                     testOrderResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + err.message + '</div>';
-                    // Show analyze log button even on error
-                    document.getElementById('analyze-log-section')?.classList.remove('hidden');
                 }
             });
         }
-
-        // Analyze log with AI
-        const analyzeLogBtn = document.getElementById('analyze-log-btn');
-        const analyzeLogResults = document.getElementById('analyze-log-results');
-        if (analyzeLogBtn) {
-            analyzeLogBtn.addEventListener('click', async () => {
-                const btn = analyzeLogBtn;
-                const originalText = btn.textContent;
-                btn.disabled = true;
-                btn.textContent = 'Analyzing...';
-                
-                const logContent = debugLogEl?.textContent || '';
-                const phpCode = phpRuleEdit?.value?.trim() || '';
-                const prompt = promptInput?.value?.trim() || '';
-                
-                if (!logContent) {
-                    alert('No log content available. Run a test first.');
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                    return;
-                }
-                
-                if (!phpCode) {
-                    alert('No PHP code available.');
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                    return;
-                }
-                
-                analyzeLogResults.classList.remove('hidden');
-                analyzeLogResults.innerHTML = '<p class="text-gray-500 text-sm">Analyzing log with AI...</p>';
-                
-                try {
-                    const response = await fetch('{{ route("ai-conversations.analyze-test-log", $aiConversation) }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            log_content: logContent,
-                            php_code: phpCode,
-                            prompt: prompt
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        let html = '<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">';
-                        html += '<h4 class="text-sm font-semibold text-gray-800 mb-3">AI Analysis & Recommendations</h4>';
-                        
-                        if (data.raw) {
-                            html += '<div class="bg-white border border-gray-200 rounded p-3 text-sm text-gray-700 whitespace-pre-wrap">' + data.analysis.replace(/</g, '&lt;') + '</div>';
-                        } else {
-                            if (data.issues && data.issues.length > 0) {
-                                html += '<div class="mb-3">';
-                                html += '<p class="text-sm font-semibold text-red-700 mb-2">Issues Found:</p>';
-                                html += '<ul class="list-disc list-inside space-y-1">';
-                                data.issues.forEach(issue => {
-                                    html += '<li class="text-sm text-gray-700">' + String(issue).replace(/</g, '&lt;') + '</li>';
-                                });
-                                html += '</ul></div>';
-                            }
-                            
-                            if (data.recommendations && data.recommendations.length > 0) {
-                                html += '<div class="mb-3">';
-                                html += '<p class="text-sm font-semibold text-blue-700 mb-2">Recommendations:</p>';
-                                html += '<ul class="list-disc list-inside space-y-1">';
-                                data.recommendations.forEach(rec => {
-                                    html += '<li class="text-sm text-gray-700">' + String(rec).replace(/</g, '&lt;') + '</li>';
-                                });
-                                html += '</ul></div>';
-                            }
-                            
-                            if (data.suggested_fixes) {
-                                html += '<div class="mb-3">';
-                                html += '<p class="text-sm font-semibold text-green-700 mb-2">Suggested Fixes:</p>';
-                                html += '<pre class="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">' + String(data.suggested_fixes).replace(/</g, '&lt;') + '</pre>';
-                                html += '</div>';
-                            }
-                            
-                            if (data.suggested_prompt) {
-                                html += '<div class="mb-3">';
-                                html += '<div class="flex items-center justify-between mb-2">';
-                                html += '<p class="text-sm font-semibold text-purple-700">Improved Prompt:</p>';
-                                html += '<button type="button" onclick="copySuggestedPrompt()" class="text-xs bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded">Copy & Use</button>';
-                                html += '</div>';
-                                html += '<textarea id="suggested-prompt-text" readonly class="w-full bg-gray-50 border border-gray-300 rounded p-3 text-sm font-mono" rows="4">' + String(data.suggested_prompt).replace(/</g, '&lt;') + '</textarea>';
-                                html += '<p class="text-xs text-gray-500 mt-1">Copy this improved prompt and use it in the Generate PHP section above.</p>';
-                                html += '</div>';
-                            }
-                        }
-                        
-                        html += '</div>';
-                        analyzeLogResults.innerHTML = html;
-                    } else {
-                        analyzeLogResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + (data.error || 'Failed to analyze log') + '</div>';
-                    }
-                } catch (error) {
-                    analyzeLogResults.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">Error: ' + error.message + '</div>';
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                }
-            });
-        }
-
-        // Copy suggested prompt to prompt input
-        window.copySuggestedPrompt = function() {
-            const suggestedPrompt = document.getElementById('suggested-prompt-text');
-            const promptInput = document.getElementById('prompt-input');
-            if (suggestedPrompt && promptInput) {
-                promptInput.value = suggestedPrompt.value;
-                promptInput.focus();
-                alert('Prompt copied! You can now use "Generate PHP" with the improved prompt.');
-            }
-        };
     </script>
 </x-app-layout>

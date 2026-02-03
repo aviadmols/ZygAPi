@@ -210,18 +210,7 @@ class TaggingEngineService
         if (!empty($rule->php_rule)) {
             $rule->loadMissing('store');
             $store = $rule->relationLoaded('store') ? $rule->store : null;
-            Log::info('TaggingEngineService::extractTags: Using PHP rule', [
-                'rule_id' => $rule->id,
-                'php_rule_length' => strlen($rule->php_rule),
-                'has_store' => $store !== null,
-            ]);
-            $result = $this->executePhpRule($rule->php_rule, $order, $store);
-            Log::info('TaggingEngineService::extractTags: PHP rule result', [
-                'rule_id' => $rule->id,
-                'tags_count' => count($result),
-                'tags' => $result,
-            ]);
-            return $result;
+            return $this->executePhpRule($rule->php_rule, $order, $store);
         }
 
         $tags = [];
@@ -302,10 +291,6 @@ class TaggingEngineService
      */
     public function executePhpRule(string $phpCode, array $order, ?Store $store = null): array
     {
-        // Remove <?php and ?> tags if present, as the wrapper already includes <?php
-        $phpCode = preg_replace('/^<\?php\s*/i', '', trim($phpCode));
-        $phpCode = preg_replace('/\?>\s*$/i', '', $phpCode);
-        
         $orderJson = json_encode($order);
         if ($orderJson === false) {
             Log::warning('TaggingEngineService: failed to encode order for PHP rule');
@@ -320,22 +305,14 @@ class TaggingEngineService
         }
         $wrapper = <<<PHP
 <?php
-error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
-ini_set('display_errors', 0);
-ini_set('log_errors', 0);
-ob_start();
+error_reporting(E_ALL & ~E_NOTICE);
 \$order = json_decode('{$orderEscaped}', true);
 \$tags = [];
 \$shopDomain = '{$shopDomain}';
 \$accessToken = '{$accessToken}';
-try {
-    (function() use (&\$tags, \$order, \$shopDomain, \$accessToken) {
+(function() use (&\$tags, \$order, \$shopDomain, \$accessToken) {
 {$phpCode}
-    })();
-} catch (\Throwable \$e) {
-    // Silently catch errors
-}
-ob_end_clean();
+})();
 if (!is_array(\$tags)) {
     \$tags = [];
 }
@@ -371,25 +348,11 @@ PHP;
             proc_close($proc);
             @unlink($tmpFile);
             if ($stderr) {
-                Log::warning('TaggingEngineService PHP rule stderr: ' . $stderr);
-            }
-            // Trim whitespace and newlines from output
-            $stdout = trim($stdout);
-            if (empty($stdout)) {
-                Log::warning('TaggingEngineService: PHP rule returned empty output. stderr: ' . ($stderr ?: 'none'));
-                return [];
-            }
-            // Try to extract JSON if there's extra output before/after
-            if (preg_match('/\[.*\]/', $stdout, $matches)) {
-                // Found array-like JSON, use it
-                $stdout = $matches[0];
-            } elseif (preg_match('/\{.*\}/', $stdout, $matches)) {
-                // Found object-like JSON, use it
-                $stdout = $matches[0];
+                Log::debug('TaggingEngineService PHP rule stderr: ' . $stderr);
             }
             $decoded = json_decode($stdout, true);
             if (!is_array($decoded)) {
-                Log::warning('TaggingEngineService: PHP rule did not return valid JSON. stdout: ' . substr($stdout, 0, 500) . ', stderr: ' . ($stderr ?: 'none'));
+                Log::warning('TaggingEngineService: PHP rule did not return valid JSON: ' . substr($stdout, 0, 200));
                 return [];
             }
             return array_values(array_filter(array_map('strval', $decoded)));
