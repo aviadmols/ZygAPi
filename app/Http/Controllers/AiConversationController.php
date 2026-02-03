@@ -328,10 +328,28 @@ class AiConversationController extends Controller
                 'php_code_length' => strlen($phpCode),
             ]);
             try {
+                // Try to get user requirements from conversation messages or request
+                $userRequirements = $validated['user_requirements'] ?? $this->getUserRequirementsFromConversation($aiConversation) ?? '';
+
+                // Generate rule name and description using AI if we have requirements
+                $ruleName = 'AI Generated Rule - ' . now()->format('Y-m-d H:i');
+                $ruleDescription = 'Saved from AI Conversation (PHP rule)';
+                
+                if ($userRequirements) {
+                    try {
+                        $nameAndDescription = $this->openRouterService->generateRuleNameAndDescription($userRequirements);
+                        $ruleName = $nameAndDescription['name'];
+                        $ruleDescription = $nameAndDescription['description'];
+                    } catch (\Throwable $e) {
+                        // Fallback if name/description generation fails
+                        Log::warning('[AI Conversation] Failed to generate rule name/description', ['error' => $e->getMessage()]);
+                    }
+                }
+
                 $rule = TaggingRule::create([
                     'store_id' => $aiConversation->store_id,
-                    'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
-                    'description' => 'Saved from AI Conversation (PHP rule)',
+                    'name' => $ruleName,
+                    'description' => $ruleDescription,
                     'rules_json' => null,
                     'tags_template' => null,
                     'php_rule' => $phpCode,
@@ -398,10 +416,22 @@ class AiConversationController extends Controller
             $result = $this->openRouterService->generatePhpRule($orderData, $userRequirements);
             $phpCode = $result['php_code'];
 
+            // Generate rule name and description using AI
+            try {
+                $nameAndDescription = $this->openRouterService->generateRuleNameAndDescription($userRequirements, $orderData);
+                $ruleName = $nameAndDescription['name'];
+                $ruleDescription = $nameAndDescription['description'];
+            } catch (\Throwable $e) {
+                // Fallback if name/description generation fails
+                Log::warning('[AI Conversation] Failed to generate rule name/description', ['error' => $e->getMessage()]);
+                $ruleName = 'AI Generated Rule - ' . now()->format('Y-m-d H:i');
+                $ruleDescription = 'Automatically generated from AI conversation (PHP rule)';
+            }
+
             $rule = TaggingRule::create([
                 'store_id' => $aiConversation->store_id,
-                'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
-                'description' => 'Automatically generated from AI conversation (PHP rule)',
+                'name' => $ruleName,
+                'description' => $ruleDescription,
                 'rules_json' => null,
                 'tags_template' => null,
                 'php_rule' => $phpCode,

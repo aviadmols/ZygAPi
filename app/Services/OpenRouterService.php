@@ -139,4 +139,76 @@ class OpenRouterService
 
         return ['php_code' => $content];
     }
+
+    /**
+     * Generate rule name and description from user requirements using AI.
+     * Returns array with 'name' and 'description' keys.
+     */
+    public function generateRuleNameAndDescription(string $userRequirements, ?array $orderData = null): array
+    {
+        $systemPrompt = "You are an expert at creating clear, descriptive names and descriptions for Shopify order tagging rules.
+
+Given the user's requirements for a tagging rule, generate:
+1. A concise, descriptive rule name (max 60 characters) that clearly indicates what the rule does
+2. A detailed description (2-4 sentences) explaining what conditions the rule checks and what tags it applies
+
+The name should be in English, use title case, and be specific (e.g., 'Subscription Orders with High LTV', 'Box Size Based on Days and Gram', 'Customer Order Count Tagging').
+
+The description should explain:
+- What conditions or criteria the rule evaluates
+- What tags are applied and when
+- Any special logic or considerations
+
+Return ONLY valid JSON in this exact structure (no markdown, no extra text):
+{
+  \"name\": \"Rule Name Here\",
+  \"description\": \"Detailed description of what the rule does, what conditions it checks, and what tags it applies.\"
+}";
+
+        $userPrompt = "User Requirements:\n" . $userRequirements;
+        if ($orderData) {
+            $userPrompt .= "\n\nSample Order Data:\n" . json_encode($orderData, JSON_PRETTY_PRINT);
+        }
+
+        $messages = [
+            ['role' => 'system', 'content' => $systemPrompt],
+            ['role' => 'user', 'content' => $userPrompt],
+        ];
+
+        $response = $this->chat($messages);
+        $content = trim($response['content']);
+
+        // Try to extract JSON from response
+        if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
+            $jsonContent = $matches[1];
+        } elseif (preg_match('/```\s*(.*?)\s*```/s', $content, $matches)) {
+            $jsonContent = $matches[1];
+        } else {
+            // Try to find JSON object in the text
+            if (preg_match('/\{.*\}/s', $content, $matches)) {
+                $jsonContent = $matches[0];
+            } else {
+                // Fallback: create simple name and description
+                return [
+                    'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
+                    'description' => 'Automatically generated from AI conversation: ' . substr($userRequirements, 0, 200),
+                ];
+            }
+        }
+
+        $result = json_decode($jsonContent, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !isset($result['name']) || !isset($result['description'])) {
+            // Fallback: create simple name and description
+            return [
+                'name' => 'AI Generated Rule - ' . now()->format('Y-m-d H:i'),
+                'description' => 'Automatically generated from AI conversation: ' . substr($userRequirements, 0, 200),
+            ];
+        }
+
+        return [
+            'name' => $result['name'],
+            'description' => $result['description'],
+        ];
+    }
 }
