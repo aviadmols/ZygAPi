@@ -165,9 +165,17 @@ The code should:
 1. Handle errors gracefully
 2. Validate input parameters
 3. Use proper error messages
-4. Return consistent response format: ['success' => bool, 'data' => array]
+4. Set \$response array with meaningful data
+5. Log important steps using \$executionLogs[] array
 
-Return ONLY the improved PHP function code, no markdown, no explanations, just the function code.";
+Available variables:
+- \$store: array (store data)
+- \$input: array (input parameters)
+- \$shopDomain: string (Shopify store domain)
+- \$accessToken: string (Shopify access token)
+- \$rechargeAccessToken: string (Recharge access token)
+
+Return ONLY the improved PHP code, no markdown, no explanations, no function wrapper, just the code that will be executed directly.";
 
         $userPrompt = "Current code:\n```php\n{$currentCode}\n```\n\n";
         $userPrompt .= "Execution logs:\n" . json_encode($logs, JSON_PRETTY_PRINT) . "\n\n";
