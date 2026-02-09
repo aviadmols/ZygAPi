@@ -628,6 +628,14 @@
                     generatedCode = data.code;
                     document.getElementById('generated_code').value = generatedCode;
                     
+                    // Open the code accordion to show improved code
+                    const codeContent = document.getElementById('generated-code-content');
+                    const codeIcon = document.getElementById('generated-code-icon');
+                    if (codeContent && codeContent.classList.contains('hidden')) {
+                        codeContent.classList.remove('hidden');
+                        codeIcon.textContent = '−';
+                    }
+                    
                     // Reset test results and analysis
                     testResults = null;
                     
