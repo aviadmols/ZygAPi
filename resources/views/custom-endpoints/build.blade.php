@@ -72,7 +72,7 @@
                             </div>
                             <div class="flex gap-4">
                                 <button type="button" onclick="previousStep(1)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">← Previous</button>
-                                <button type="button" onclick="generateInputFields()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Generate Input Fields →</button>
+                                <button type="button" id="generate-fields-btn" onclick="generateInputFields()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Generate Input Fields →</button>
                             </div>
                         </div>
                     </div>
@@ -88,7 +88,7 @@
                             <button type="button" onclick="addInputField()" class="text-sm text-indigo-600 hover:text-indigo-800 mb-4">+ Add Field</button>
                             <div class="flex gap-4">
                                 <button type="button" onclick="previousStep(2)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">← Previous</button>
-                                <button type="button" onclick="generateCode()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Generate Code →</button>
+                                <button type="button" id="generate-code-btn" onclick="generateCode()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Generate Code →</button>
                             </div>
                         </div>
                     </div>
@@ -110,7 +110,7 @@
                                     <!-- Will be populated by JavaScript based on input fields -->
                                 </div>
                                 <div class="flex gap-4 mb-4">
-                                    <button type="button" onclick="testEndpoint()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Send Test</button>
+                                    <button type="button" id="test-btn" onclick="testEndpoint()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Send Test</button>
                                     <button type="button" onclick="improveCode()" id="improve-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hidden">Improve Code</button>
                                 </div>
                                 
@@ -473,7 +473,7 @@
                 }
             });
 
-            const testBtn = document.querySelector('button[onclick="testEndpoint()"]');
+            const testBtn = document.getElementById('test-btn');
             const originalText = testBtn.textContent;
             testBtn.disabled = true;
             testBtn.textContent = '🔄 Testing...';
