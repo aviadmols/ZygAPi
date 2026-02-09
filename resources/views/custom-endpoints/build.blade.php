@@ -98,9 +98,16 @@
                         <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
                             <h3 class="text-lg font-semibold text-gray-800 mb-3">Step 4: Code Generation & Testing</h3>
                             <div class="mb-4">
-                                <label for="generated_code" class="block text-sm font-medium text-gray-700 mb-2">Generated Code</label>
-                                <textarea id="generated_code" name="generated_code" rows="15" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm" readonly></textarea>
-                                <button type="button" onclick="document.getElementById('generated_code').readOnly = false; this.textContent = 'Code locked'" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Edit Code</button>
+                                <div class="bg-gray-50 rounded-lg border border-gray-200">
+                                    <button type="button" onclick="toggleAccordion('generated-code-content', 'generated-code-icon')" class="w-full flex items-center justify-between p-4 text-left font-semibold hover:bg-gray-100 rounded-t-lg">
+                                        <span>Generated Code</span>
+                                        <span id="generated-code-icon" class="text-xl">+</span>
+                                    </button>
+                                    <div id="generated-code-content" class="hidden p-4 pt-0">
+                                        <textarea id="generated_code" name="generated_code" rows="15" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm" readonly></textarea>
+                                        <button type="button" id="edit-code-btn" onclick="toggleCodeEdit()" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Edit Code</button>
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Test Section -->
@@ -257,6 +264,22 @@
             }
         }
 
+        function toggleCodeEdit() {
+            const codeTextarea = document.getElementById('generated_code');
+            const editBtn = document.getElementById('edit-code-btn');
+            if (codeTextarea.readOnly) {
+                codeTextarea.readOnly = false;
+                editBtn.textContent = 'Lock Code';
+                editBtn.classList.remove('text-indigo-600');
+                editBtn.classList.add('text-red-600');
+            } else {
+                codeTextarea.readOnly = true;
+                editBtn.textContent = 'Edit Code';
+                editBtn.classList.remove('text-red-600');
+                editBtn.classList.add('text-indigo-600');
+            }
+        }
+
         async function generateInputFields() {
             const platforms = Array.from(document.querySelectorAll('input[name="platforms[]"]:checked')).map(cb => cb.value);
             const prompt = document.getElementById('prompt').value.trim();
@@ -403,6 +426,13 @@
                 if (data.success && data.code) {
                     generatedCode = data.code;
                     document.getElementById('generated_code').value = generatedCode;
+                    // Open the accordion and show the code
+                    const codeContent = document.getElementById('generated-code-content');
+                    const codeIcon = document.getElementById('generated-code-icon');
+                    if (codeContent.classList.contains('hidden')) {
+                        codeContent.classList.remove('hidden');
+                        codeIcon.textContent = '−';
+                    }
                     renderTestParameters();
                     nextStep(4);
                 } else {
