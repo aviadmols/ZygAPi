@@ -119,12 +119,18 @@ You MUST refer to the official API documentation for the selected platform(s) to
 - Send the correct request body format
 - Handle responses properly
 
+CRITICAL: The code will be executed inside eval(), which means:
+- DO NOT use 'use' statements (they cause syntax errors in eval context)
+- Use fully qualified class names instead (e.g., \\Illuminate\\Support\\Facades\\Http)
+- DO NOT include namespace declarations
+- DO NOT include opening <?php tag
+
 Generate PHP code that:
 1. Implements the logic described in the user's prompt
 2. Uses the provided input parameters from \$input array
 3. Can access store data via: \$store (array with store data)
-4. Uses Laravel's Http facade: use Illuminate\\Support\\Facades\\Http;
-5. Uses Laravel's Log facade: use Illuminate\\Support\\Facades\\Log;
+4. Uses Laravel's Http facade with fully qualified name: \\Illuminate\\Support\\Facades\\Http
+5. Uses Laravel's Log facade with fully qualified name: \\Illuminate\\Support\\Facades\\Log
 6. Sets \$response = [] array with the result data
 7. Logs important steps using \$executionLogs[] array
 
@@ -138,24 +144,27 @@ Available variables in execution context:
 For Shopify API calls:
 - Base URL: https://{\$shopDomain}/admin/api/2024-01/
 - Headers: ['X-Shopify-Access-Token' => \$accessToken, 'Content-Type' => 'application/json']
-- Example: Http::withHeaders(['X-Shopify-Access-Token' => \$accessToken])->post(\$url, \$dataArray)
+- Example: \\Illuminate\\Support\\Facades\\Http::withHeaders(['X-Shopify-Access-Token' => \$accessToken])->post(\$url, \$dataArray)
 - Refer to Shopify Admin REST API docs for endpoint structure and required fields
 
 For Recharge API calls:
 - Base URL: https://api.rechargeapps.com/
 - Headers: ['X-Recharge-Access-Token' => \$rechargeAccessToken, 'Content-Type' => 'application/json']
-- Example: Http::withHeaders(['X-Recharge-Access-Token' => \$rechargeAccessToken])->post(\$url, \$dataArray)
+- Example: \\Illuminate\\Support\\Facades\\Http::withHeaders(['X-Recharge-Access-Token' => \$rechargeAccessToken])->post(\$url, \$dataArray)
 - Common endpoints:
   * Cancel subscription: POST /subscriptions/{id}/cancel with body: ['cancellation_reason' => 'reason']
   * Update subscription: PUT /subscriptions/{id} with body: {field: value}
   * Get subscription: GET /subscriptions/{id}
 - Refer to Recharge API docs for complete endpoint reference
 
-IMPORTANT:
+IMPORTANT SYNTAX RULES:
+- NEVER use 'use' statements - they cause syntax errors in eval() context
+- ALWAYS use fully qualified class names: \\Illuminate\\Support\\Facades\\Http, \\Illuminate\\Support\\Facades\\Log
+- DO NOT include <?php tag or namespace declarations
 - Always pass arrays directly to Http::post(), Http::put(), etc. - Laravel handles JSON encoding
 - Check the API documentation for the exact endpoint URL and required request body format
 - Include proper error handling with try-catch blocks
-- Log errors and important steps for debugging
+- Log errors and important steps for debugging using \\Illuminate\\Support\\Facades\\Log::info() or \\Illuminate\\Support\\Facades\\Log::error()
 
 The code should set \$response array with the result. The endpoint will automatically wrap it with 'success' and 'data' keys.
 
@@ -264,6 +273,12 @@ Return a JSON object with:
     ): string {
         $systemPrompt = "You are a PHP code reviewer and improver. Analyze the provided code, execution logs, and test results to identify issues and improve the code.
 
+CRITICAL: The code will be executed inside eval(), which means:
+- DO NOT use 'use' statements (they cause syntax errors in eval context)
+- Use fully qualified class names instead (e.g., \\Illuminate\\Support\\Facades\\Http)
+- DO NOT include namespace declarations
+- DO NOT include opening <?php tag
+
 The code should:
 1. Handle errors gracefully
 2. Validate input parameters
@@ -278,7 +293,11 @@ Available variables:
 - \$accessToken: string (Shopify access token)
 - \$rechargeAccessToken: string (Recharge access token)
 
-Return ONLY the improved PHP code, no markdown, no explanations, no function wrapper, just the code that will be executed directly.";
+Use fully qualified class names:
+- \\Illuminate\\Support\\Facades\\Http for HTTP requests
+- \\Illuminate\\Support\\Facades\\Log for logging
+
+Return ONLY the improved PHP code, no markdown, no explanations, no function wrapper, no 'use' statements, just the code that will be executed directly.";
 
         $userPrompt = "Current code:\n```php\n{$currentCode}\n```\n\n";
         $userPrompt .= "Execution logs:\n" . json_encode($logs, JSON_PRETTY_PRINT) . "\n\n";
@@ -315,32 +334,28 @@ Return ONLY the improved PHP code, no markdown, no explanations, no function wra
     private function getDefaultCode(): string
     {
         return <<<'PHP'
-function executeCustomEndpoint(array $input, int $shopId, $shopifyClient = null, $rechargeClient = null): array {
-    try {
-        // TODO: Implement your custom endpoint logic here
-        // Access input parameters via $input array
-        // Use $shopifyClient and $rechargeClient for API calls
-        
-        return [
-            'success' => true,
-            'data' => [
-                'message' => 'Custom endpoint executed successfully',
-                'input' => $input,
-            ],
-        ];
-    } catch (\Exception $e) {
-        \Illuminate\Support\Facades\Log::error('Custom endpoint error', [
-            'error' => $e->getMessage(),
-            'shop_id' => $shopId,
-        ]);
-        
-        return [
-            'success' => false,
-            'data' => [
-                'error' => $e->getMessage(),
-            ],
-        ];
-    }
+try {
+    // TODO: Implement your custom endpoint logic here
+    // Access input parameters via $input array
+    // Use $shopDomain, $accessToken for Shopify API calls
+    // Use $rechargeAccessToken for Recharge API calls
+    
+    // Example: Make HTTP request
+    // $response = \Illuminate\Support\Facades\Http::withHeaders(['X-Shopify-Access-Token' => $accessToken])->get($url);
+    
+    $response = [
+        'message' => 'Custom endpoint executed successfully',
+        'input' => $input,
+    ];
+} catch (\Exception $e) {
+    \Illuminate\Support\Facades\Log::error('Custom endpoint error', [
+        'error' => $e->getMessage(),
+        'store_id' => $store['id'] ?? null,
+    ]);
+    
+    $response = [
+        'error' => $e->getMessage(),
+    ];
 }
 PHP;
     }
