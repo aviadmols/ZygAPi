@@ -128,16 +128,30 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Test Results -->
-                                <div id="test-results" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
-                                    <h5 class="font-semibold mb-2">Test Results:</h5>
-                                    <pre id="test-results-content" class="text-sm overflow-auto max-h-64"></pre>
+                                <!-- Test Results Accordion -->
+                                <div id="test-results" class="hidden mt-4">
+                                    <div class="bg-gray-50 rounded-lg border border-gray-200">
+                                        <button type="button" onclick="toggleAccordion('test-results-content', 'test-results-icon')" class="w-full flex items-center justify-between p-4 text-left font-semibold hover:bg-gray-100 rounded-t-lg">
+                                            <span>Test Results</span>
+                                            <span id="test-results-icon" class="text-xl">+</span>
+                                        </button>
+                                        <div id="test-results-content" class="hidden p-4 pt-0">
+                                            <pre class="text-sm overflow-auto max-h-64 bg-white p-3 rounded border"></pre>
+                                        </div>
+                                    </div>
                                 </div>
                                 
-                                <!-- Execution Logs -->
-                                <div id="execution-logs" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
-                                    <h5 class="font-semibold mb-2">Execution Logs:</h5>
-                                    <pre id="execution-logs-content" class="text-sm overflow-auto max-h-64"></pre>
+                                <!-- Execution Logs Accordion -->
+                                <div id="execution-logs" class="hidden mt-4">
+                                    <div class="bg-gray-50 rounded-lg border border-gray-200">
+                                        <button type="button" onclick="toggleAccordion('execution-logs-content', 'execution-logs-icon')" class="w-full flex items-center justify-between p-4 text-left font-semibold hover:bg-gray-100 rounded-t-lg">
+                                            <span>Execution Logs</span>
+                                            <span id="execution-logs-icon" class="text-xl">+</span>
+                                        </button>
+                                        <div id="execution-logs-content" class="hidden p-4 pt-0">
+                                            <pre class="text-sm overflow-auto max-h-64 bg-white p-3 rounded border"></pre>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -231,6 +245,18 @@
             showStep(step);
         }
 
+        function toggleAccordion(contentId, iconId) {
+            const content = document.getElementById(contentId);
+            const icon = document.getElementById(iconId);
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.textContent = '−';
+            } else {
+                content.classList.add('hidden');
+                icon.textContent = '+';
+            }
+        }
+
         async function generateInputFields() {
             const platforms = Array.from(document.querySelectorAll('input[name="platforms[]"]:checked')).map(cb => cb.value);
             const prompt = document.getElementById('prompt').value.trim();
@@ -244,6 +270,12 @@
                 alert('Please select at least one platform.');
                 return;
             }
+
+            const btn = document.getElementById('generate-fields-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '🔄 Generating...';
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
 
             try {
                 const response = await fetch('/api/internal/custom-endpoints/generate-input-fields', {
@@ -270,6 +302,10 @@
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
@@ -341,6 +377,12 @@
             // Update inputFields from form
             updateInputFieldsFromForm();
 
+            const btn = document.getElementById('generate-code-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '🔄 Generating...';
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
             try {
                 const response = await fetch('/api/internal/custom-endpoints/generate-code', {
                     method: 'POST',
@@ -368,6 +410,10 @@
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
@@ -427,6 +473,12 @@
                 }
             });
 
+            const testBtn = document.querySelector('button[onclick="testEndpoint()"]');
+            const originalText = testBtn.textContent;
+            testBtn.disabled = true;
+            testBtn.textContent = '🔄 Testing...';
+            testBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
             try {
                 const response = await fetch('/api/internal/custom-endpoints/test', {
                     method: 'POST',
@@ -445,16 +497,16 @@
                 const data = await response.json();
                 testResults = data;
                 
-                // Show test results
+                // Show test results accordion
                 const resultsDiv = document.getElementById('test-results');
-                const resultsContent = document.getElementById('test-results-content');
+                const resultsContent = resultsDiv.querySelector('pre');
                 resultsDiv.classList.remove('hidden');
                 resultsContent.textContent = JSON.stringify(data, null, 2);
                 
-                // Show execution logs
+                // Show execution logs accordion
                 if (data.logs && data.logs.length > 0) {
                     const logsDiv = document.getElementById('execution-logs');
-                    const logsContent = document.getElementById('execution-logs-content');
+                    const logsContent = logsDiv.querySelector('pre');
                     logsDiv.classList.remove('hidden');
                     logsContent.textContent = JSON.stringify(data.logs, null, 2);
                 }
@@ -499,6 +551,10 @@
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = originalText;
+                testBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
