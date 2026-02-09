@@ -84,4 +84,12 @@ Route::post('webhooks/tagging-rule/{tagging_rule}/apply', [\App\Http\Controllers
 // Custom endpoint execution (X-Webhook-Token or ?token)
 Route::match(['get', 'post', 'put'], 'webhooks/custom-endpoint/{slug}', [\App\Http\Controllers\CustomEndpointController::class, 'execute'])->name('webhooks.custom-endpoint.execute');
 
+// Internal API endpoints for custom endpoint wizard
+Route::prefix('api/internal/custom-endpoints')->middleware('auth')->group(function () {
+    Route::post('/generate-input-fields', [\App\Http\Controllers\CustomEndpointController::class, 'generateInputFields']);
+    Route::post('/generate-code', [\App\Http\Controllers\CustomEndpointController::class, 'generateCode']);
+    Route::post('/test', [\App\Http\Controllers\CustomEndpointController::class, 'testCode']);
+    Route::post('/improve-code', [\App\Http\Controllers\CustomEndpointController::class, 'improveCode']);
+});
+
 require __DIR__.'/auth.php';

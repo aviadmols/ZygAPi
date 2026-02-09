@@ -5,79 +5,167 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Step Indicator -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="step-indicator flex items-center" data-step="1">
+                            <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">1</div>
+                            <span class="ml-2 text-sm font-medium">Select Store</span>
+                        </div>
+                        <div class="w-16 h-0.5 bg-gray-300"></div>
+                        <div class="step-indicator flex items-center" data-step="2">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">2</div>
+                            <span class="ml-2 text-sm font-medium">Platforms & Prompt</span>
+                        </div>
+                        <div class="w-16 h-0.5 bg-gray-300"></div>
+                        <div class="step-indicator flex items-center" data-step="3">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">3</div>
+                            <span class="ml-2 text-sm font-medium">Input Fields</span>
+                        </div>
+                        <div class="w-16 h-0.5 bg-gray-300"></div>
+                        <div class="step-indicator flex items-center" data-step="4">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">4</div>
+                            <span class="ml-2 text-sm font-medium">Code & Test</span>
+                        </div>
+                        <div class="w-16 h-0.5 bg-gray-300"></div>
+                        <div class="step-indicator flex items-center" data-step="5">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">5</div>
+                            <span class="ml-2 text-sm font-medium">Save & URL</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
-                    <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <h3 class="text-sm font-semibold text-gray-800 mb-3">1. Define your endpoint</h3>
-                        <div class="mb-4">
-                            <label for="platform" class="block text-sm font-medium text-gray-700">Platform</label>
-                            <select id="platform" name="platform" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="shopify">Shopify</option>
-                                <option value="recharge">Recharge</option>
-                            </select>
-                            <p class="mt-1 text-xs text-gray-500">AI will use this platform's API documentation to generate the code.</p>
+                    <!-- Step 1: Store Selection (Already selected, show info) -->
+                    <div id="step-1" class="step-content">
+                        <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-3">Step 1: Store Selected</h3>
+                            <p class="text-sm text-gray-600">Store: <strong>{{ $store->name }}</strong></p>
+                            <button type="button" onclick="nextStep(2)" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Next →</button>
                         </div>
-                        <div class="mb-4">
-                            <label for="prompt" class="block text-sm font-medium text-gray-700">Prompt (what should the endpoint do?)</label>
-                            <textarea id="prompt" name="prompt" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. Fetch order by order_id, then update order tags based on line items..."></textarea>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Input parameters (what the endpoint receives)</label>
-                            <p class="text-xs text-gray-500 mb-2">Add parameter names the endpoint will receive (e.g. order_id, subscription_id).</p>
-                            <div id="input-params-container" class="space-y-2">
-                                <div class="input-param-row flex gap-2 items-center">
-                                    <input type="text" name="input_param_name[]" placeholder="e.g. order_id" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm flex-1">
-                                    <button type="button" class="remove-input text-red-600 text-sm">Remove</button>
-                                </div>
-                            </div>
-                            <button type="button" id="add-input-param" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">+ Add parameter</button>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Test return values (expected response keys and sample values)</label>
-                            <p class="text-xs text-gray-500 mb-2">Define the keys and example values the endpoint should return (for AI to match).</p>
-                            <div id="return-values-container" class="space-y-2">
-                                <div class="return-row flex gap-2 items-center">
-                                    <input type="text" name="return_name[]" placeholder="Key name" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm w-40">
-                                    <input type="text" name="return_value[]" placeholder="Example value" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm flex-1">
-                                    <button type="button" class="remove-return text-red-600 text-sm">Remove</button>
-                                </div>
-                            </div>
-                            <button type="button" id="add-return-value" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">+ Add return field</button>
-                        </div>
-                        <button type="button" id="generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Generate code</button>
                     </div>
 
-                    <div id="generated-section" class="hidden mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                        <h3 class="text-sm font-semibold text-gray-800 mb-3">2. Generated code – Save as endpoint</h3>
-                        <textarea id="php_code" name="php_code" rows="16" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm mb-4"></textarea>
-                        <input type="hidden" id="http_method" value="POST">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label for="ep_name" class="block text-sm font-medium text-gray-700">Endpoint name</label>
-                                <input type="text" id="ep_name" name="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <!-- Step 2: Platform Selection & Prompt -->
+                    <div id="step-2" class="step-content hidden">
+                        <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-3">Step 2: Select Platforms & Enter Prompt</h3>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Platforms (can select multiple)</label>
+                                <div class="flex gap-4">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="platforms[]" value="shopify" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm">Shopify</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="platforms[]" value="recharge" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <span class="ml-2 text-sm">Recharge</span>
+                                    </label>
+                                </div>
                             </div>
-                            <div>
-                                <label for="ep_slug" class="block text-sm font-medium text-gray-700">Slug (URL path)</label>
-                                <input type="text" id="ep_slug" name="slug" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="my-endpoint">
+                            <div class="mb-4">
+                                <label for="prompt" class="block text-sm font-medium text-gray-700">Prompt (what should this endpoint do?)</label>
+                                <textarea id="prompt" name="prompt" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Describe what you want this custom endpoint to do..."></textarea>
+                                <p class="mt-1 text-xs text-gray-500">Be specific about what actions you want to perform and what data you need.</p>
+                            </div>
+                            <div class="flex gap-4">
+                                <button type="button" onclick="previousStep(1)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">← Previous</button>
+                                <button type="button" onclick="generateInputFields()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Generate Input Fields →</button>
                             </div>
                         </div>
-                        <div class="mb-4">
-                            <label for="webhook_token" class="block text-sm font-medium text-gray-700">Webhook token (optional; if set, required for calls)</label>
-                            <input type="text" id="webhook_token" name="webhook_token" maxlength="64" class="mt-1 block w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">
+                    </div>
+
+                    <!-- Step 3: Input Fields (Auto-generated + Editable) -->
+                    <div id="step-3" class="step-content hidden">
+                        <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-3">Step 3: Input Fields</h3>
+                            <p class="text-sm text-gray-500 mb-4">Review and edit the generated input fields. You can add, remove, or modify fields as needed.</p>
+                            <div id="input-fields-container" class="space-y-3 mb-4">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                            <button type="button" onclick="addInputField()" class="text-sm text-indigo-600 hover:text-indigo-800 mb-4">+ Add Field</button>
+                            <div class="flex gap-4">
+                                <button type="button" onclick="previousStep(2)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">← Previous</button>
+                                <button type="button" onclick="generateCode()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Generate Code →</button>
+                            </div>
                         </div>
-                        <form id="save-form" method="POST" action="{{ route('custom-endpoints.store') }}">
-                            @csrf
-                            <input type="hidden" name="store_id" value="{{ $store->id }}">
-                            <input type="hidden" name="platform" id="save_platform">
-                            <input type="hidden" name="prompt" id="save_prompt">
-                            <input type="hidden" name="input_params" id="save_input_params">
-                            <input type="hidden" name="test_return_values" id="save_test_return_values">
-                            <input type="hidden" name="php_code" id="save_php_code">
-                            <input type="hidden" name="name" id="save_name">
-                            <input type="hidden" name="slug" id="save_slug">
-                            <input type="hidden" name="webhook_token" id="save_webhook_token">
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Save endpoint</button>
-                        </form>
+                    </div>
+
+                    <!-- Step 4: Code Generation & Testing -->
+                    <div id="step-4" class="step-content hidden">
+                        <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-3">Step 4: Code Generation & Testing</h3>
+                            <div class="mb-4">
+                                <label for="generated_code" class="block text-sm font-medium text-gray-700 mb-2">Generated Code</label>
+                                <textarea id="generated_code" name="generated_code" rows="15" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm" readonly></textarea>
+                                <button type="button" onclick="document.getElementById('generated_code').readOnly = false; this.textContent = 'Code locked'" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800">Edit Code</button>
+                            </div>
+                            
+                            <!-- Test Section -->
+                            <div id="test-section" class="mt-6 p-4 bg-white rounded-lg border border-gray-200">
+                                <h4 class="text-md font-semibold text-gray-800 mb-3">Test Endpoint</h4>
+                                <div id="test-parameters-container" class="space-y-3 mb-4">
+                                    <!-- Will be populated by JavaScript based on input fields -->
+                                </div>
+                                <div class="flex gap-4 mb-4">
+                                    <button type="button" onclick="testEndpoint()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Send Test</button>
+                                    <button type="button" onclick="improveCode()" id="improve-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hidden">Improve Code</button>
+                                </div>
+                                <div id="test-results" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                                    <h5 class="font-semibold mb-2">Test Results:</h5>
+                                    <pre id="test-results-content" class="text-sm overflow-auto"></pre>
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-4 mt-6">
+                                <button type="button" onclick="previousStep(3)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">← Previous</button>
+                                <button type="button" onclick="nextStep(5)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Next →</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 5: Save & Configure URL -->
+                    <div id="step-5" class="step-content hidden">
+                        <div class="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-3">Step 5: Save & Configure URL</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="ep_name" class="block text-sm font-medium text-gray-700">Endpoint Name</label>
+                                    <input type="text" id="ep_name" name="name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                                </div>
+                                <div>
+                                    <label for="ep_slug" class="block text-sm font-medium text-gray-700">Endpoint URL Slug</label>
+                                    <input type="text" id="ep_slug" name="slug" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="my-endpoint" required>
+                                    <p class="mt-1 text-xs text-gray-500">This will be used in the endpoint URL</p>
+                                </div>
+                            </div>
+                            <div class="mb-4 p-3 bg-indigo-50 rounded-lg">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Full Endpoint URL:</label>
+                                <code id="endpoint-url-preview" class="text-sm text-indigo-700"></code>
+                            </div>
+                            <div class="mb-4">
+                                <label for="webhook_token" class="block text-sm font-medium text-gray-700">Webhook token (optional)</label>
+                                <input type="text" id="webhook_token" name="webhook_token" maxlength="64" class="mt-1 block w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm">
+                            </div>
+                            <form id="save-form" method="POST" action="{{ route('custom-endpoints.store') }}">
+                                @csrf
+                                <input type="hidden" name="store_id" value="{{ $store->id }}">
+                                <input type="hidden" name="platform" id="save_platform">
+                                <input type="hidden" name="prompt" id="save_prompt">
+                                <input type="hidden" name="input_params" id="save_input_params">
+                                <input type="hidden" name="test_return_values" id="save_test_return_values">
+                                <input type="hidden" name="php_code" id="save_php_code">
+                                <input type="hidden" name="name" id="save_name">
+                                <input type="hidden" name="slug" id="save_slug">
+                                <input type="hidden" name="webhook_token" id="save_webhook_token">
+                                <div class="flex gap-4">
+                                    <button type="button" onclick="previousStep(4)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">← Previous</button>
+                                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Save Endpoint</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -85,85 +173,340 @@
     </div>
 
     <script>
+        let currentStep = 1;
+        let inputFields = [];
+        let generatedCode = '';
+        let testResults = null;
         const storeId = {{ $store->id }};
-        const generateUrl = '{{ route("custom-endpoints.generate") }}';
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
-        document.getElementById('add-input-param').addEventListener('click', function() {
-            const div = document.createElement('div');
-            div.className = 'input-param-row flex gap-2 items-center';
-            div.innerHTML = '<input type="text" name="input_param_name[]" placeholder="e.g. order_id" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm flex-1"><button type="button" class="remove-input text-red-600 text-sm">Remove</button>';
-            div.querySelector('.remove-input').addEventListener('click', function() { div.remove(); });
-            document.getElementById('input-params-container').appendChild(div);
-        });
-        document.querySelectorAll('.remove-input').forEach(function(btn) {
-            btn.addEventListener('click', function() { this.closest('.input-param-row').remove(); });
-        });
+        function updateStepIndicator(step) {
+            document.querySelectorAll('.step-indicator').forEach((el, idx) => {
+                const stepNum = idx + 1;
+                const circle = el.querySelector('div');
+                if (stepNum <= step) {
+                    circle.classList.remove('bg-gray-300', 'text-gray-600');
+                    circle.classList.add('bg-indigo-600', 'text-white');
+                } else {
+                    circle.classList.remove('bg-indigo-600', 'text-white');
+                    circle.classList.add('bg-gray-300', 'text-gray-600');
+                }
+            });
+        }
 
-        document.getElementById('add-return-value').addEventListener('click', function() {
-            const div = document.createElement('div');
-            div.className = 'return-row flex gap-2 items-center';
-            div.innerHTML = '<input type="text" name="return_name[]" placeholder="Key name" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm w-40"><input type="text" name="return_value[]" placeholder="Example value" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm flex-1"><button type="button" class="remove-return text-red-600 text-sm">Remove</button>';
-            div.querySelector('.remove-return').addEventListener('click', function() { div.remove(); });
-            document.getElementById('return-values-container').appendChild(div);
-        });
-        document.querySelectorAll('.remove-return').forEach(function(btn) {
-            btn.addEventListener('click', function() { this.closest('.return-row').remove(); });
-        });
+        function showStep(step) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`step-${step}`).classList.remove('hidden');
+            currentStep = step;
+            updateStepIndicator(step);
+        }
 
-        document.getElementById('generate-btn').addEventListener('click', async function() {
-            const btn = this;
+        function nextStep(step) {
+            showStep(step);
+        }
+
+        function previousStep(step) {
+            showStep(step);
+        }
+
+        async function generateInputFields() {
+            const platforms = Array.from(document.querySelectorAll('input[name="platforms[]"]:checked')).map(cb => cb.value);
             const prompt = document.getElementById('prompt').value.trim();
-            if (!prompt) { alert('Enter a prompt.'); return; }
-            const inputNames = Array.from(document.querySelectorAll('input[name="input_param_name[]"]')).map(i => i.value.trim()).filter(Boolean);
-            const returnNames = Array.from(document.querySelectorAll('input[name="return_name[]"]')).map(i => i.value.trim()).filter(Boolean);
-            const returnValues = Array.from(document.querySelectorAll('input[name="return_value[]"]')).map(i => i.value.trim());
-            const returnList = returnNames.map((n, i) => ({ name: n, value: returnValues[i] || '' }));
 
-            btn.disabled = true;
-            btn.textContent = 'Generating...';
+            if (!prompt) {
+                alert('Please enter a prompt.');
+                return;
+            }
+
+            if (platforms.length === 0) {
+                alert('Please select at least one platform.');
+                return;
+            }
+
             try {
-                const res = await fetch(generateUrl, {
+                const response = await fetch('/api/internal/custom-endpoints/generate-input-fields', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf
+                    },
                     body: JSON.stringify({
                         store_id: storeId,
-                        platform: document.getElementById('platform').value,
-                        prompt: prompt,
-                        input_params: inputNames.map(n => ({ name: n })),
-                        test_return_values: returnList
+                        platforms: platforms,
+                        prompt: prompt
                     })
                 });
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById('php_code').value = data.php_code;
-                    document.getElementById('http_method').value = data.http_method || 'POST';
-                    document.getElementById('generated-section').classList.remove('hidden');
+
+                const data = await response.json();
+                if (data.success && data.fields) {
+                    inputFields = data.fields;
+                    renderInputFields();
+                    nextStep(3);
                 } else {
-                    alert('Error: ' + (data.error || 'Unknown'));
+                    alert('Error: ' + (data.error || 'Failed to generate input fields'));
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
             }
-            btn.disabled = false;
-            btn.textContent = 'Generate code';
+        }
+
+        function renderInputFields() {
+            const container = document.getElementById('input-fields-container');
+            container.innerHTML = '';
+            inputFields.forEach((field, index) => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-white rounded border border-gray-200';
+                div.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Field Name</label>
+                            <input type="text" class="input-field-name mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${field.name || ''}" data-index="${index}">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Type</label>
+                            <select class="input-field-type mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" data-index="${index}">
+                                <option value="string" ${field.type === 'string' ? 'selected' : ''}>String</option>
+                                <option value="number" ${field.type === 'number' ? 'selected' : ''}>Number</option>
+                                <option value="boolean" ${field.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+                                <option value="array" ${field.type === 'array' ? 'selected' : ''}>Array</option>
+                                <option value="object" ${field.type === 'object' ? 'selected' : ''}>Object</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="input-field-required rounded border-gray-300" ${field.required ? 'checked' : ''} data-index="${index}">
+                                <span class="ml-2 text-xs">Required</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Default Value</label>
+                            <input type="text" class="input-field-default mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${field.default || ''}" data-index="${index}">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700">Description</label>
+                        <textarea class="input-field-description mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" rows="2" data-index="${index}">${field.description || ''}</textarea>
+                    </div>
+                    <button type="button" onclick="removeInputField(${index})" class="mt-2 text-xs text-red-600 hover:text-red-800">Remove</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addInputField() {
+            inputFields.push({
+                name: '',
+                type: 'string',
+                required: true,
+                default: '',
+                description: ''
+            });
+            renderInputFields();
+        }
+
+        function removeInputField(index) {
+            inputFields.splice(index, 1);
+            renderInputFields();
+        }
+
+        async function generateCode() {
+            const platforms = Array.from(document.querySelectorAll('input[name="platforms[]"]:checked')).map(cb => cb.value);
+            const prompt = document.getElementById('prompt').value.trim();
+
+            // Update inputFields from form
+            updateInputFieldsFromForm();
+
+            try {
+                const response = await fetch('/api/internal/custom-endpoints/generate-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf
+                    },
+                    body: JSON.stringify({
+                        store_id: storeId,
+                        platforms: platforms,
+                        prompt: prompt,
+                        input_schema: inputFields
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success && data.code) {
+                    generatedCode = data.code;
+                    document.getElementById('generated_code').value = generatedCode;
+                    renderTestParameters();
+                    nextStep(4);
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to generate code'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function updateInputFieldsFromForm() {
+            inputFields = inputFields.map((field, index) => {
+                const nameEl = document.querySelector(`.input-field-name[data-index="${index}"]`);
+                const typeEl = document.querySelector(`.input-field-type[data-index="${index}"]`);
+                const requiredEl = document.querySelector(`.input-field-required[data-index="${index}"]`);
+                const defaultEl = document.querySelector(`.input-field-default[data-index="${index}"]`);
+                const descEl = document.querySelector(`.input-field-description[data-index="${index}"]`);
+                
+                return {
+                    name: nameEl ? nameEl.value : field.name,
+                    type: typeEl ? typeEl.value : field.type,
+                    required: requiredEl ? requiredEl.checked : field.required,
+                    default: defaultEl ? defaultEl.value : field.default,
+                    description: descEl ? descEl.value : field.description
+                };
+            });
+        }
+
+        function renderTestParameters() {
+            const container = document.getElementById('test-parameters-container');
+            container.innerHTML = '';
+            inputFields.forEach(field => {
+                if (!field.name) return;
+                const div = document.createElement('div');
+                div.className = 'mb-3';
+                let inputHtml = '';
+                if (field.type === 'boolean') {
+                    inputHtml = `<label class="flex items-center"><input type="checkbox" class="test-param rounded border-gray-300" data-name="${field.name}"><span class="ml-2 text-sm">${field.name}</span></label>`;
+                } else if (field.type === 'array' || field.type === 'object') {
+                    inputHtml = `<label class="block text-sm font-medium text-gray-700 mb-1">${field.name} (JSON)</label><textarea class="test-param block w-full rounded-md border-gray-300 shadow-sm text-sm" data-name="${field.name}" rows="3" placeholder='${field.type === 'array' ? '["value1", "value2"]' : '{"key": "value"}'}'></textarea>`;
+                } else {
+                    inputHtml = `<label class="block text-sm font-medium text-gray-700 mb-1">${field.name}${field.required ? ' *' : ''}</label><input type="${field.type === 'number' ? 'number' : 'text'}" class="test-param block w-full rounded-md border-gray-300 shadow-sm text-sm" data-name="${field.name}" ${field.required ? 'required' : ''}>`;
+                }
+                div.innerHTML = inputHtml;
+                container.appendChild(div);
+            });
+        }
+
+        async function testEndpoint() {
+            updateInputFieldsFromForm();
+            const testParams = {};
+            document.querySelectorAll('.test-param').forEach(el => {
+                const name = el.getAttribute('data-name');
+                if (el.type === 'checkbox') {
+                    testParams[name] = el.checked;
+                } else if (el.type === 'textarea') {
+                    try {
+                        testParams[name] = JSON.parse(el.value);
+                    } catch {
+                        testParams[name] = el.value;
+                    }
+                } else {
+                    testParams[name] = el.value;
+                }
+            });
+
+            try {
+                const response = await fetch('/api/internal/custom-endpoints/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf
+                    },
+                    body: JSON.stringify({
+                        store_id: storeId,
+                        code: generatedCode,
+                        input: testParams
+                    })
+                });
+
+                const data = await response.json();
+                testResults = data;
+                
+                const resultsDiv = document.getElementById('test-results');
+                const resultsContent = document.getElementById('test-results-content');
+                resultsDiv.classList.remove('hidden');
+                resultsContent.textContent = JSON.stringify(data, null, 2);
+                
+                if (!data.success) {
+                    document.getElementById('improve-btn').classList.remove('hidden');
+                } else {
+                    document.getElementById('improve-btn').classList.add('hidden');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function improveCode() {
+            if (!testResults) {
+                alert('Please test the endpoint first.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/internal/custom-endpoints/improve-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf
+                    },
+                    body: JSON.stringify({
+                        store_id: storeId,
+                        current_code: generatedCode,
+                        logs: testResults.logs || [],
+                        test_results: testResults
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success && data.code) {
+                    generatedCode = data.code;
+                    document.getElementById('generated_code').value = generatedCode;
+                    alert('Code improved! Please test again.');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to improve code'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Update endpoint URL preview
+        document.getElementById('ep_name').addEventListener('input', function() {
+            const slug = document.getElementById('ep_slug').value || this.value.toLowerCase().replace(/\s+/g, '-');
+            document.getElementById('ep_slug').value = slug;
+            updateEndpointUrlPreview();
         });
 
+        document.getElementById('ep_slug').addEventListener('input', updateEndpointUrlPreview);
+
+        function updateEndpointUrlPreview() {
+            const slug = document.getElementById('ep_slug').value || 'your-endpoint';
+            const url = `{{ config('app.url') }}/webhooks/custom-endpoint/${slug}`;
+            document.getElementById('endpoint-url-preview').textContent = url;
+        }
+
+        // Save form handler
         document.getElementById('save-form').addEventListener('submit', function(e) {
-            const name = document.getElementById('ep_name').value.trim();
-            const slug = document.getElementById('ep_slug').value.trim() || name.toLowerCase().replace(/\s+/g, '-');
-            if (!name) { e.preventDefault(); alert('Enter endpoint name.'); return; }
-            document.getElementById('save_name').value = name;
-            document.getElementById('save_slug').value = slug;
-            document.getElementById('save_platform').value = document.getElementById('platform').value;
-            document.getElementById('save_prompt').value = document.getElementById('prompt').value;
-            const inputNames = Array.from(document.querySelectorAll('input[name="input_param_name[]"]')).map(i => i.value.trim()).filter(Boolean);
-            document.getElementById('save_input_params').value = JSON.stringify(inputNames.map(n => ({ name: n })));
-            const returnNames = Array.from(document.querySelectorAll('input[name="return_name[]"]')).map(i => i.value.trim()).filter(Boolean);
-            const returnValues = Array.from(document.querySelectorAll('input[name="return_value[]"]')).map(i => i.value.trim());
-            document.getElementById('save_test_return_values').value = JSON.stringify(returnNames.map((n, i) => ({ name: n, value: returnValues[i] || '' })));
-            document.getElementById('save_php_code').value = document.getElementById('php_code').value;
+            const platforms = Array.from(document.querySelectorAll('input[name="platforms[]"]:checked')).map(cb => cb.value);
+            const prompt = document.getElementById('prompt').value;
+            
+            updateInputFieldsFromForm();
+            
+            document.getElementById('save_platform').value = platforms[0] || 'shopify';
+            document.getElementById('save_prompt').value = prompt;
+            document.getElementById('save_input_params').value = JSON.stringify(inputFields.map(f => ({ name: f.name })));
+            document.getElementById('save_test_return_values').value = JSON.stringify([]);
+            document.getElementById('save_php_code').value = generatedCode;
+            document.getElementById('save_name').value = document.getElementById('ep_name').value;
+            document.getElementById('save_slug').value = document.getElementById('ep_slug').value;
             document.getElementById('save_webhook_token').value = document.getElementById('webhook_token').value;
         });
+
+        // Initialize
+        showStep(1);
+        updateEndpointUrlPreview();
     </script>
 </x-app-layout>

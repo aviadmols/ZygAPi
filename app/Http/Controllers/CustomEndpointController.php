@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\CustomEndpoint;
 use App\Models\CustomEndpointLog;
 use App\Models\Store;
+use App\Services\CustomEndpointAIService;
+use App\Services\CustomEndpointExecutor;
 use App\Services\OpenRouterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +17,9 @@ use Illuminate\Http\JsonResponse;
 class CustomEndpointController extends Controller
 {
     public function __construct(
-        protected OpenRouterService $openRouterService
+        protected OpenRouterService $openRouterService,
+        protected CustomEndpointAIService $aiService,
+        protected CustomEndpointExecutor $executor
     ) {}
 
     public function index(): View
@@ -236,6 +240,127 @@ class CustomEndpointController extends Controller
                 'success' => false,
                 'error_message' => $e->getMessage(),
             ]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate input fields based on prompt and platforms (Step 2 → Step 3)
+     */
+    public function generateInputFields(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'platforms' => 'required|array',
+            'platforms.*' => 'in:shopify,recharge',
+            'prompt' => 'required|string',
+        ]);
+
+        try {
+            $fields = $this->aiService->generateInputFields(
+                $validated['prompt'],
+                $validated['platforms']
+            );
+
+            return response()->json([
+                'success' => true,
+                'fields' => $fields,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('CustomEndpointController::generateInputFields ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate code based on prompt, platforms, and input schema (Step 3 → Step 4)
+     */
+    public function generateCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'platforms' => 'required|array',
+            'platforms.*' => 'in:shopify,recharge',
+            'prompt' => 'required|string',
+            'input_schema' => 'required|array',
+        ]);
+
+        try {
+            $code = $this->aiService->generateCode(
+                $validated['prompt'],
+                $validated['platforms'],
+                $validated['input_schema']
+            );
+
+            return response()->json([
+                'success' => true,
+                'code' => $code,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('CustomEndpointController::generateCode ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Test endpoint execution (Step 4) - New wizard version
+     */
+    public function testCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'code' => 'required|string',
+            'input' => 'required|array',
+        ]);
+
+        try {
+            $result = $this->executor->execute(
+                $validated['code'],
+                $validated['input'],
+                $validated['store_id']
+            );
+
+            return response()->json([
+                'success' => $result['success'],
+                'data' => $result['data'],
+                'logs' => $result['logs'] ?? [],
+                'execution_time_ms' => $result['execution_time_ms'] ?? 0,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('CustomEndpointController::test ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'logs' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * Improve code based on test results and logs (Step 4)
+     */
+    public function improveCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'current_code' => 'required|string',
+            'logs' => 'nullable|array',
+            'test_results' => 'nullable|array',
+        ]);
+
+        try {
+            $improvedCode = $this->aiService->improveCode(
+                $validated['current_code'],
+                $validated['logs'] ?? [],
+                $validated['test_results'] ?? []
+            );
+
+            return response()->json([
+                'success' => true,
+                'code' => $improvedCode,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('CustomEndpointController::improveCode ' . $e->getMessage());
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
