@@ -88,6 +88,14 @@ Return ONLY the fields that the user must provide as input. Be minimal and preci
         array $platforms,
         array $inputSchema
     ): string {
+        $platformDocs = [];
+        if (in_array('shopify', $platforms)) {
+            $platformDocs[] = "Shopify API Documentation: https://shopify.dev/docs/api/admin-rest";
+        }
+        if (in_array('recharge', $platforms)) {
+            $platformDocs[] = "Recharge API Documentation: https://developer.rechargepayments.com/2021-11";
+        }
+        
         $systemPrompt = "You are a PHP developer creating a custom API endpoint for a Laravel application.
 
 Available platforms: " . implode(', ', $platforms) . "
@@ -95,14 +103,30 @@ Available platforms: " . implode(', ', $platforms) . "
 The endpoint will receive input parameters based on this schema:
 " . json_encode($inputSchema, JSON_PRETTY_PRINT) . "
 
+CRITICAL RULES FOR HTTP REQUESTS:
+1. Laravel's Http::post() expects an ARRAY as the second parameter, NOT a JSON string
+2. NEVER use json_encode() when passing data to Http::post() - pass the array directly
+3. Laravel automatically encodes arrays to JSON when using Http::post()
+4. Example CORRECT: Http::post(\$url, ['key' => 'value'])
+5. Example WRONG: Http::post(\$url, json_encode(['key' => 'value']))
+
+API DOCUMENTATION REFERENCES:
+" . implode("\n", $platformDocs) . "
+
+You MUST refer to the official API documentation for the selected platform(s) to:
+- Use the correct endpoint URLs
+- Include required headers
+- Send the correct request body format
+- Handle responses properly
+
 Generate PHP code that:
 1. Implements the logic described in the user's prompt
 2. Uses the provided input parameters from \$input array
 3. Can access store data via: \$store (array with store data)
-4. Can access Shopify via: \$shopDomain (string) and \$accessToken (string) for API calls
-5. Can access Recharge via: \$rechargeAccessToken (string) for API calls
+4. Uses Laravel's Http facade: use Illuminate\\Support\\Facades\\Http;
+5. Uses Laravel's Log facade: use Illuminate\\Support\\Facades\\Log;
 6. Sets \$response = [] array with the result data
-7. Uses Laravel's Log facade for logging: use Illuminate\\Support\\Facades\\Log;
+7. Logs important steps using \$executionLogs[] array
 
 Available variables in execution context:
 - \$store: array (store data including id, name, etc.)
@@ -111,13 +135,27 @@ Available variables in execution context:
 - \$accessToken: string (Shopify access token)
 - \$rechargeAccessToken: string (Recharge access token)
 
-For Shopify API calls, use:
+For Shopify API calls:
 - Base URL: https://{\$shopDomain}/admin/api/2024-01/
-- Headers: ['X-Shopify-Access-Token' => \$accessToken]
+- Headers: ['X-Shopify-Access-Token' => \$accessToken, 'Content-Type' => 'application/json']
+- Example: Http::withHeaders(['X-Shopify-Access-Token' => \$accessToken])->post(\$url, \$dataArray)
+- Refer to Shopify Admin REST API docs for endpoint structure and required fields
 
-For Recharge API calls, use:
+For Recharge API calls:
 - Base URL: https://api.rechargeapps.com/
-- Headers: ['X-Recharge-Access-Token' => \$rechargeAccessToken]
+- Headers: ['X-Recharge-Access-Token' => \$rechargeAccessToken, 'Content-Type' => 'application/json']
+- Example: Http::withHeaders(['X-Recharge-Access-Token' => \$rechargeAccessToken])->post(\$url, \$dataArray)
+- Common endpoints:
+  * Cancel subscription: POST /subscriptions/{id}/cancel with body: ['cancellation_reason' => 'reason']
+  * Update subscription: PUT /subscriptions/{id} with body: {field: value}
+  * Get subscription: GET /subscriptions/{id}
+- Refer to Recharge API docs for complete endpoint reference
+
+IMPORTANT:
+- Always pass arrays directly to Http::post(), Http::put(), etc. - Laravel handles JSON encoding
+- Check the API documentation for the exact endpoint URL and required request body format
+- Include proper error handling with try-catch blocks
+- Log errors and important steps for debugging
 
 The code should set \$response array with the result. The endpoint will automatically wrap it with 'success' and 'data' keys.
 
