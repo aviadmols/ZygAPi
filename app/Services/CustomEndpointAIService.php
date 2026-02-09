@@ -154,6 +154,71 @@ Return ONLY the PHP code, no markdown, no explanations, no function wrapper, jus
         }
     }
 
+    public function analyzeTestResults(
+        string $currentCode,
+        array $logs,
+        array $testResults
+    ): array {
+        $systemPrompt = "You are a code analyzer. Analyze the test results, execution logs, and code to provide feedback.
+
+Review:
+1. Did the code execute successfully?
+2. What does the response data contain?
+3. Are there any issues or improvements needed?
+4. Is the code doing what was requested in the prompt?
+
+Return a JSON object with:
+- success: boolean (whether the code worked correctly)
+- analysis: string (detailed analysis of what happened)
+- issues: array (list of issues found, if any)
+- suggestions: array (suggestions for improvement, if any)
+- needs_fix: boolean (whether the code needs to be fixed)";
+
+        $userPrompt = "Code:\n```php\n{$currentCode}\n```\n\n";
+        $userPrompt .= "Execution Logs:\n" . json_encode($logs, JSON_PRETTY_PRINT) . "\n\n";
+        $userPrompt .= "Test Results:\n" . json_encode($testResults, JSON_PRETTY_PRINT) . "\n\n";
+        $userPrompt .= "Analyze these results and provide feedback.";
+
+        try {
+            $messages = [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userPrompt],
+            ];
+            
+            $response = $this->openRouterService->chat($messages, $this->getDefaultModel());
+            $content = $response['content'] ?? '{}';
+            
+            // Try to extract JSON from markdown code blocks
+            if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
+                $content = $matches[1];
+            } elseif (preg_match('/\{.*\}/s', $content, $matches)) {
+                $content = $matches[0];
+            }
+            
+            $parsed = json_decode($content, true);
+            
+            return [
+                'success' => $parsed['success'] ?? true,
+                'analysis' => $parsed['analysis'] ?? 'Analysis completed',
+                'issues' => $parsed['issues'] ?? [],
+                'suggestions' => $parsed['suggestions'] ?? [],
+                'needs_fix' => $parsed['needs_fix'] ?? false,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to analyze test results', [
+                'error' => $e->getMessage(),
+            ]);
+            
+            return [
+                'success' => true,
+                'analysis' => 'Could not analyze results automatically.',
+                'issues' => [],
+                'suggestions' => [],
+                'needs_fix' => false,
+            ];
+        }
+    }
+
     public function improveCode(
         string $currentCode,
         array $logs,

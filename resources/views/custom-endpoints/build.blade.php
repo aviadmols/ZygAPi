@@ -111,10 +111,7 @@
                                 </div>
                                 <div class="flex gap-4 mb-4">
                                     <button type="button" onclick="testEndpoint()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Send Test</button>
-                                    <button type="button" onclick="improveCode()" id="improve-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hidden">
-                                        <span id="improve-btn-text">Improve Code</span>
-                                        <span id="improve-btn-loading" class="hidden">⏳ Improving...</span>
-                                    </button>
+                                    <button type="button" onclick="improveCode()" id="improve-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hidden">Improve Code</button>
                                 </div>
                                 
                                 <!-- AI Analysis Section -->
@@ -512,13 +509,12 @@
             }
 
             const improveBtn = document.getElementById('improve-btn');
-            const improveBtnText = document.getElementById('improve-btn-text');
-            const improveBtnLoading = document.getElementById('improve-btn-loading');
+            const originalText = improveBtn.textContent;
             
             // Show loading state
             improveBtn.disabled = true;
-            improveBtnText.classList.add('hidden');
-            improveBtnLoading.classList.remove('hidden');
+            improveBtn.textContent = '🔄 Improving...';
+            improveBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
             try {
                 const response = await fetch('/api/internal/custom-endpoints/improve-code', {
@@ -540,8 +536,7 @@
                 if (data.success && data.code) {
                     // Update the code
                     generatedCode = data.code;
-                    const codeTextarea = document.getElementById('generated_code');
-                    codeTextarea.value = generatedCode;
+                    document.getElementById('generated_code').value = generatedCode;
                     
                     // Reset test results and analysis
                     testResults = null;
@@ -550,22 +545,29 @@
                     document.getElementById('ai-analysis').classList.add('hidden');
                     document.getElementById('test-results').classList.add('hidden');
                     document.getElementById('execution-logs').classList.add('hidden');
-                    
-                    // Hide improve button
                     document.getElementById('improve-btn').classList.add('hidden');
                     
+                    // Clear test parameters
+                    document.querySelectorAll('.test-param').forEach(el => {
+                        if (el.type === 'checkbox') {
+                            el.checked = false;
+                        } else {
+                            el.value = '';
+                        }
+                    });
+                    
                     // Show success message
-                    alert('✅ Code improved successfully! The code has been updated. You can now test it again.');
+                    alert('✅ Code improved successfully! Please test again.');
                 } else {
                     alert('Error: ' + (data.error || 'Failed to improve code'));
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
             } finally {
-                // Reset button state
+                // Restore button state
                 improveBtn.disabled = false;
-                improveBtnText.classList.remove('hidden');
-                improveBtnLoading.classList.add('hidden');
+                improveBtn.textContent = originalText;
+                improveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
