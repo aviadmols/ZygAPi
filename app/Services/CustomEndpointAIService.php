@@ -21,28 +21,35 @@ class CustomEndpointAIService
         string $prompt,
         array $platforms
     ): array {
-        $systemPrompt = "You are an API endpoint designer. Analyze the user's prompt and the selected platforms to determine what input fields are needed for this custom endpoint.
+        $systemPrompt = "You are an API endpoint designer. Analyze the user's prompt carefully to identify ONLY the input parameters that the user explicitly needs to PROVIDE (receive from the request).
+
+IMPORTANT RULES:
+1. Only include input fields that the user MUST PROVIDE as input parameters
+2. DO NOT include fields that can be calculated internally (like current date, today's date, timestamps, etc.)
+3. DO NOT include fields that are constants or can be derived from other data
+4. Focus on what the user explicitly mentions they want to RECEIVE as input
+5. If the user says 'I want to receive X', then X is an input field
+6. If the user says 'calculate Y' or 'set Y to today', Y is NOT an input field - it's calculated internally
 
 Platforms available: " . implode(', ', $platforms) . "
 
-Return a JSON object with a 'fields' array. Each field should have:
-- name: string (field name)
-- type: string (string, number, boolean, array, object)
-- required: boolean
-- default: mixed (optional default value)
-- description: string (what this field is for)
+Examples:
+- User says: 'I want to receive subscription_id and update the next charge date to today + 28 days'
+  → Input fields: ONLY subscription_id (the date calculation is internal, not an input)
+  
+- User says: 'I want to receive order_id and add tags'
+  → Input fields: ONLY order_id (tags might be hardcoded or calculated)
+  
+- User says: 'I want to receive order_id and tags'
+  → Input fields: order_id AND tags (both are explicitly mentioned as inputs)
 
-Example response:
-{
-  \"fields\": [
-    {
-      \"name\": \"order_id\",
-      \"type\": \"string\",
-      \"required\": true,
-      \"description\": \"The Shopify order ID to process\"
-    }
-  ]
-}";
+Return a JSON object with a 'fields' array. Each field should have:
+- name: string (field name, use snake_case)
+- type: string (string, number, boolean, array, object)
+- required: boolean (true if the user explicitly needs it)
+- description: string (what this field is for, based on what the user said)
+
+Return ONLY the fields that the user must provide as input. Be minimal and precise.";
 
         try {
             $messages = [
@@ -165,7 +172,7 @@ Return ONLY the improved PHP function code, no markdown, no explanations, just t
         $userPrompt = "Current code:\n```php\n{$currentCode}\n```\n\n";
         $userPrompt .= "Execution logs:\n" . json_encode($logs, JSON_PRETTY_PRINT) . "\n\n";
         $userPrompt .= "Test results:\n" . json_encode($testResults, JSON_PRETTY_PRINT) . "\n\n";
-        $userPrompt .= "Please improve this code based on the logs and test results.";
+        $userPrompt .= "Please improve this code based on the logs and test results. Fix any issues found and ensure the code works correctly.";
 
         try {
             $messages = [

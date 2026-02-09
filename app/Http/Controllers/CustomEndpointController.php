@@ -320,18 +320,33 @@ class CustomEndpointController extends Controller
                 $validated['store_id']
             );
 
+            // Automatically analyze test results
+            $analysis = $this->aiService->analyzeTestResults(
+                $validated['code'],
+                $result['logs'] ?? [],
+                $result
+            );
+
             return response()->json([
                 'success' => $result['success'],
                 'data' => $result['data'],
                 'logs' => $result['logs'] ?? [],
                 'execution_time_ms' => $result['execution_time_ms'] ?? 0,
+                'analysis' => $analysis,
             ]);
         } catch (\Throwable $e) {
-            Log::error('CustomEndpointController::test ' . $e->getMessage());
+            Log::error('CustomEndpointController::testCode ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'logs' => [],
+                'analysis' => [
+                    'success' => false,
+                    'analysis' => 'Test failed: ' . $e->getMessage(),
+                    'issues' => [$e->getMessage()],
+                    'suggestions' => ['Check the error message and fix the code'],
+                    'needs_fix' => true,
+                ],
             ], 500);
         }
     }

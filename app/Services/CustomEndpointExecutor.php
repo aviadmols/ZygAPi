@@ -68,9 +68,25 @@ class CustomEndpointExecutor
         string $rechargeAccessToken,
         array &$logs
     ): array {
+        $logs[] = [
+            'step' => 'Initialization',
+            'timestamp' => now()->toIso8601String(),
+            'message' => 'Starting code execution',
+            'input_received' => $input,
+            'store_id' => $store->id,
+            'store_name' => $store->name,
+        ];
+
         // Clean code (remove PHP tags if present)
         $code = preg_replace('/^<\?php\s*/i', '', trim($code));
         $code = preg_replace('/\?>\s*$/i', '', $code);
+        
+        $logs[] = [
+            'step' => 'Code Preparation',
+            'timestamp' => now()->toIso8601String(),
+            'message' => 'Code cleaned and prepared for execution',
+            'code_length' => strlen($code),
+        ];
         
         // Wrap code in execution context
         // The code expects: $store, $input, $shopDomain, $accessToken, $rechargeAccessToken
@@ -81,18 +97,50 @@ class CustomEndpointExecutor
             \$accessToken = " . var_export($accessToken, true) . ";
             \$rechargeAccessToken = " . var_export($rechargeAccessToken, true) . ";
             \$response = [];
-            {$code}
-            return \$response;
+            
+            // Log execution start
+            \$executionLogs = [];
+            \$executionLogs[] = ['step' => 'Code Execution Started', 'timestamp' => date('c'), 'input' => \$input];
+            
+            try {
+                {$code}
+                
+                \$executionLogs[] = ['step' => 'Code Execution Completed', 'timestamp' => date('c'), 'response' => \$response];
+            } catch (\Exception \$e) {
+                \$executionLogs[] = ['step' => 'Code Execution Error', 'timestamp' => date('c'), 'error' => \$e->getMessage(), 'file' => \$e->getFile(), 'line' => \$e->getLine()];
+                throw \$e;
+            }
+            
+            return ['response' => \$response, 'logs' => \$executionLogs];
         ";
 
         // Validate code syntax before execution
         $this->validateCodeSyntax($wrappedCode);
+        
+        $logs[] = [
+            'step' => 'Syntax Validation',
+            'timestamp' => now()->toIso8601String(),
+            'message' => 'Code syntax validated successfully',
+        ];
 
         // Execute in isolated scope
         try {
+            $logs[] = [
+                'step' => 'Execution Start',
+                'timestamp' => now()->toIso8601String(),
+                'message' => 'Executing code...',
+            ];
+            
             // Use eval in a controlled way - this is necessary for dynamic code execution
             // but we validate syntax first and limit available functions
-            $result = eval($wrappedCode);
+            $evalResult = eval($wrappedCode);
+            
+            // Extract logs from execution if available
+            if (is_array($evalResult) && isset($evalResult['logs'])) {
+                $logs = array_merge($logs, $evalResult['logs']);
+            }
+            
+            $result = $evalResult['response'] ?? $evalResult;
             
             if (!is_array($result)) {
                 $result = ['data' => $result];
@@ -102,11 +150,36 @@ class CustomEndpointExecutor
             if (!isset($result['success'])) {
                 $result['success'] = true;
             }
+            
+            $logs[] = [
+                'step' => 'Execution Complete',
+                'timestamp' => now()->toIso8601String(),
+                'message' => 'Code executed successfully',
+                'result' => $result,
+            ];
 
             return $result;
         } catch (\ParseError $e) {
+            $logs[] = [
+                'step' => 'Syntax Error',
+                'timestamp' => now()->toIso8601String(),
+                'message' => 'Syntax error in generated code',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ];
             throw new \RuntimeException('Syntax error in generated code: ' . $e->getMessage());
         } catch (\Throwable $e) {
+            $logs[] = [
+                'step' => 'Execution Error',
+                'timestamp' => now()->toIso8601String(),
+                'message' => 'Error during code execution',
+                'error' => $e->getMessage(),
+                'type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ];
             throw new \RuntimeException('Execution error: ' . $e->getMessage());
         }
     }

@@ -113,9 +113,31 @@
                                     <button type="button" onclick="testEndpoint()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Send Test</button>
                                     <button type="button" onclick="improveCode()" id="improve-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded hidden">Improve Code</button>
                                 </div>
+                                
+                                <!-- AI Analysis Section -->
+                                <div id="ai-analysis" class="hidden mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                    <h5 class="font-semibold text-blue-900 mb-2">🤖 AI Analysis:</h5>
+                                    <div id="ai-analysis-content" class="text-sm text-gray-700 mb-3"></div>
+                                    <div id="ai-issues" class="hidden mb-2">
+                                        <strong class="text-red-700">Issues found:</strong>
+                                        <ul id="ai-issues-list" class="list-disc list-inside text-sm text-red-600"></ul>
+                                    </div>
+                                    <div id="ai-suggestions" class="hidden mb-2">
+                                        <strong class="text-green-700">Suggestions:</strong>
+                                        <ul id="ai-suggestions-list" class="list-disc list-inside text-sm text-green-600"></ul>
+                                    </div>
+                                </div>
+                                
+                                <!-- Test Results -->
                                 <div id="test-results" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
                                     <h5 class="font-semibold mb-2">Test Results:</h5>
-                                    <pre id="test-results-content" class="text-sm overflow-auto"></pre>
+                                    <pre id="test-results-content" class="text-sm overflow-auto max-h-64"></pre>
+                                </div>
+                                
+                                <!-- Execution Logs -->
+                                <div id="execution-logs" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                                    <h5 class="font-semibold mb-2">Execution Logs:</h5>
+                                    <pre id="execution-logs-content" class="text-sm overflow-auto max-h-64"></pre>
                                 </div>
                             </div>
                             
@@ -423,15 +445,57 @@
                 const data = await response.json();
                 testResults = data;
                 
+                // Show test results
                 const resultsDiv = document.getElementById('test-results');
                 const resultsContent = document.getElementById('test-results-content');
                 resultsDiv.classList.remove('hidden');
                 resultsContent.textContent = JSON.stringify(data, null, 2);
                 
-                if (!data.success) {
-                    document.getElementById('improve-btn').classList.remove('hidden');
+                // Show execution logs
+                if (data.logs && data.logs.length > 0) {
+                    const logsDiv = document.getElementById('execution-logs');
+                    const logsContent = document.getElementById('execution-logs-content');
+                    logsDiv.classList.remove('hidden');
+                    logsContent.textContent = JSON.stringify(data.logs, null, 2);
+                }
+                
+                // Show AI analysis
+                if (data.analysis) {
+                    const analysisDiv = document.getElementById('ai-analysis');
+                    const analysisContent = document.getElementById('ai-analysis-content');
+                    analysisDiv.classList.remove('hidden');
+                    
+                    analysisContent.innerHTML = `<p class="mb-2">${data.analysis.analysis || 'Analysis completed'}</p>`;
+                    
+                    // Show issues if any
+                    if (data.analysis.issues && data.analysis.issues.length > 0) {
+                        const issuesDiv = document.getElementById('ai-issues');
+                        const issuesList = document.getElementById('ai-issues-list');
+                        issuesDiv.classList.remove('hidden');
+                        issuesList.innerHTML = data.analysis.issues.map(issue => `<li>${issue}</li>`).join('');
+                    }
+                    
+                    // Show suggestions if any
+                    if (data.analysis.suggestions && data.analysis.suggestions.length > 0) {
+                        const suggestionsDiv = document.getElementById('ai-suggestions');
+                        const suggestionsList = document.getElementById('ai-suggestions-list');
+                        suggestionsDiv.classList.remove('hidden');
+                        suggestionsList.innerHTML = data.analysis.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('');
+                    }
+                    
+                    // Show improve button if needed
+                    if (data.analysis.needs_fix || !data.success || (data.analysis.issues && data.analysis.issues.length > 0)) {
+                        document.getElementById('improve-btn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('improve-btn').classList.add('hidden');
+                    }
                 } else {
-                    document.getElementById('improve-btn').classList.add('hidden');
+                    // Fallback: show improve button if test failed
+                    if (!data.success) {
+                        document.getElementById('improve-btn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('improve-btn').classList.add('hidden');
+                    }
                 }
             } catch (e) {
                 alert('Error: ' + e.message);
