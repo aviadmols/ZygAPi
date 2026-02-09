@@ -499,16 +499,20 @@
                 
                 // Show test results accordion
                 const resultsDiv = document.getElementById('test-results');
-                const resultsContent = resultsDiv.querySelector('pre');
+                const resultsContent = resultsDiv.querySelector('#test-results-content pre');
                 resultsDiv.classList.remove('hidden');
-                resultsContent.textContent = JSON.stringify(data, null, 2);
+                if (resultsContent) {
+                    resultsContent.textContent = JSON.stringify(data, null, 2);
+                }
                 
                 // Show execution logs accordion
                 if (data.logs && data.logs.length > 0) {
                     const logsDiv = document.getElementById('execution-logs');
-                    const logsContent = logsDiv.querySelector('pre');
+                    const logsContent = logsDiv.querySelector('#execution-logs-content pre');
                     logsDiv.classList.remove('hidden');
-                    logsContent.textContent = JSON.stringify(data.logs, null, 2);
+                    if (logsContent) {
+                        logsContent.textContent = JSON.stringify(data.logs, null, 2);
+                    }
                 }
                 
                 // Show AI analysis
